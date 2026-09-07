@@ -14,3 +14,7 @@ dist-ssr
 *.sqlite3
 *.db
 apps/api/data/
+
+.design
+.tasks
+.checks
