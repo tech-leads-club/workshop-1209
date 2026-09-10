@@ -9,6 +9,78 @@ type Item = {
   createdAt: string
 }
 
+function CatalogRow({
+  item,
+  onChanged,
+  onError,
+}: {
+  item: Item
+  onChanged: () => Promise<void>
+  onError: (message: string) => void
+}) {
+  const [name, setName] = useState(item.name)
+  const [unit, setUnit] = useState(item.unit)
+
+  useEffect(() => {
+    setName(item.name)
+    setUnit(item.unit)
+  }, [item.name, item.unit])
+
+  async function onSave(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    onError('')
+    const response = await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name, unit }),
+    })
+    if (response.ok) {
+      await onChanged()
+      return
+    }
+    const body = (await response.json()) as { error?: string }
+    onError(body.error ?? 'Não foi possível atualizar o item')
+  }
+
+  async function onDelete() {
+    onError('')
+    const response = await fetch(`/api/items/${item.id}`, { method: 'DELETE' })
+    if (response.status === 204) {
+      await onChanged()
+    }
+  }
+
+  return (
+    <li>
+      <form onSubmit={(event) => void onSave(event)}>
+        <span>{item.sku}</span>
+        <label>
+          Nome
+          <input
+            name="edit-name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
+        </label>
+        <label>
+          Unidade
+          <input
+            name="edit-unit"
+            value={unit}
+            onChange={(event) => setUnit(event.target.value)}
+            required
+          />
+        </label>
+        <button type="submit">Salvar</button>
+      </form>
+      <button type="button" onClick={() => void onDelete()}>
+        Excluir
+      </button>
+    </li>
+  )
+}
+
 function App() {
   const [items, setItems] = useState<Item[]>([])
   const [sku, setSku] = useState('')
@@ -44,14 +116,6 @@ function App() {
     }
     const body = (await response.json()) as { error?: string }
     setError(body.error ?? 'Não foi possível criar o item')
-  }
-
-  async function onDelete(id: string) {
-    setError('')
-    const response = await fetch(`/api/items/${id}`, { method: 'DELETE' })
-    if (response.status === 204) {
-      await refresh()
-    }
   }
 
   return (
@@ -93,14 +157,12 @@ function App() {
       ) : (
         <ul>
           {items.map((item) => (
-            <li key={item.id}>
-              <span>{item.sku}</span>
-              <span>{item.name}</span>
-              <span>{item.unit}</span>
-              <button type="button" onClick={() => void onDelete(item.id)}>
-                Excluir
-              </button>
-            </li>
+            <CatalogRow
+              key={item.id}
+              item={item}
+              onChanged={refresh}
+              onError={setError}
+            />
           ))}
         </ul>
       )}

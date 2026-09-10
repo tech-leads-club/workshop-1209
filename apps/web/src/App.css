@@ -36,9 +36,13 @@ ul {
 
 li {
   display: grid;
-  grid-template-columns: 1fr 2fr 1fr auto;
+  grid-template-columns: 1fr 2fr 1fr auto auto;
   gap: 8px;
   align-items: center;
+}
+
+li form {
+  display: contents;
 }
 
 button {
