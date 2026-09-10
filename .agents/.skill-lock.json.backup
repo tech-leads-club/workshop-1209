@@ -12,18 +12,6 @@
       ],
       "method": "copy",
       "global": false
-    },
-    "tlc-implement": {
-      "name": "tlc-implement",
-      "source": "local",
-      "contentHash": "b3bbd69d067b042072e9538ea5edc90db28b0873fdf4d86157ca4ae5363bfd9e",
-      "installedAt": "2026-09-10T18:09:00.689Z",
-      "updatedAt": "2026-09-10T18:09:00.689Z",
-      "agents": [
-        "cursor"
-      ],
-      "method": "copy",
-      "global": false
     }
   }
 }
