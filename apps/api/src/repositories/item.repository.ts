@@ -41,4 +41,24 @@ export class ItemRepository {
       .returning({ id: items.id })
     return deleted.length > 0
   }
+
+  async update(
+    id: string,
+    fields: { name: string; unit: string },
+  ): Promise<ItemRecord | undefined> {
+    const updated = await this.db
+      .update(items)
+      .set({ name: fields.name, unit: fields.unit })
+      .where(eq(items.id, id))
+      .returning()
+    const row = updated[0]
+    if (!row) return undefined
+    return {
+      id: row.id,
+      sku: row.sku,
+      name: row.name,
+      unit: row.unit,
+      createdAt: row.createdAt,
+    }
+  }
 }

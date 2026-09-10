@@ -143,4 +143,121 @@ describe('ItemService', () => {
       expect((error as Error).message).toBe('Item not found')
     }
   })
+
+  test('updateById with name and unit returns the repository row and does not pass sku', async () => {
+    const persisted: ItemRecord = {
+      id: 'item-1',
+      sku: 'CEM-50',
+      name: 'Cimento CP-III',
+      unit: 'kg',
+      createdAt: '2026-09-07T00:00:00.000Z',
+    }
+    const items = sinon.createStubInstance(ItemRepository)
+    items.update.resolves(persisted)
+    const service = new ItemService(items)
+
+    const updated = await service.updateById('item-1', {
+      name: 'Cimento CP-III',
+      unit: 'kg',
+    })
+
+    expect(updated).toEqual(persisted)
+    expect(items.update.calledOnce).toBe(true)
+    expect(items.update.firstCall.args).toEqual([
+      'item-1',
+      { name: 'Cimento CP-III', unit: 'kg' },
+    ])
+  })
+
+  test('updateById ignores sku on the input', async () => {
+    const persisted: ItemRecord = {
+      id: 'item-1',
+      sku: 'CEM-50',
+      name: 'Cimento CP-III',
+      unit: 'kg',
+      createdAt: '2026-09-07T00:00:00.000Z',
+    }
+    const items = sinon.createStubInstance(ItemRepository)
+    items.update.resolves(persisted)
+    const service = new ItemService(items)
+
+    const updated = await service.updateById('item-1', {
+      name: 'Cimento CP-III',
+      unit: 'kg',
+      sku: 'OUTRO',
+    })
+
+    expect(updated.sku).toBe('CEM-50')
+    expect(items.update.calledOnce).toBe(true)
+    expect(items.update.firstCall.args[1]).toEqual({
+      name: 'Cimento CP-III',
+      unit: 'kg',
+    })
+  })
+
+  test('updateById with blank or whitespace name or unit throws 400 and does not call repository.update', async () => {
+    const cases = [
+      { name: '', unit: valid.unit },
+      { name: '   ', unit: valid.unit },
+      { name: valid.name, unit: '' },
+      { name: valid.name, unit: '   ' },
+    ]
+
+    for (const input of cases) {
+      const items = sinon.createStubInstance(ItemRepository)
+      const service = new ItemService(items)
+
+      try {
+        await service.updateById('item-1', input)
+        throw new Error(`expected updateById to throw for ${JSON.stringify(input)}`)
+      } catch (error) {
+        expect(error).toBeInstanceOf(Error)
+        expect((error as Error & { statusCode: number }).statusCode).toBe(400)
+        expect((error as Error).message).toBe('name and unit are required')
+      }
+
+      expect(items.update.notCalled).toBe(true)
+    }
+  })
+
+  test('updateById throws 404 when the repository updates nothing', async () => {
+    const items = sinon.createStubInstance(ItemRepository)
+    items.update.resolves(undefined)
+    const service = new ItemService(items)
+
+    try {
+      await service.updateById('00000000-0000-4000-8000-000000000000', {
+        name: 'A',
+        unit: 'un',
+      })
+      throw new Error('expected updateById to throw')
+    } catch (error) {
+      expect((error as Error & { statusCode: number }).statusCode).toBe(404)
+      expect((error as Error).message).toBe('Item not found')
+    }
+  })
+
+  test('updateById trims name and unit before repository.update', async () => {
+    const persisted: ItemRecord = {
+      id: 'item-1',
+      sku: 'CEM-50',
+      name: 'Cimento CP-III',
+      unit: 'kg',
+      createdAt: '2026-09-07T00:00:00.000Z',
+    }
+    const items = sinon.createStubInstance(ItemRepository)
+    items.update.resolves(persisted)
+    const service = new ItemService(items)
+
+    await service.updateById('item-1', {
+      name: '  Cimento CP-III  ',
+      unit: '  kg  ',
+    })
+
+    expect(items.update.calledOnce).toBe(true)
+    expect(items.update.firstCall.args[1]).toEqual({
+      name: 'Cimento CP-III',
+      unit: 'kg',
+    })
+  })
 })

@@ -47,6 +47,20 @@ export class ItemService {
       throw httpError('Item not found', 404)
     }
   }
+
+  async updateById(id: string, input: ItemInput): Promise<ItemRecord> {
+    const name = input.name?.trim() ?? ''
+    const unit = input.unit?.trim() ?? ''
+    if (!name || !unit) {
+      throw httpError('name and unit are required', 400)
+    }
+
+    const updated = await this.items.update(id, { name, unit })
+    if (!updated) {
+      throw httpError('Item not found', 404)
+    }
+    return updated
+  }
 }
 
 function httpError(message: string, statusCode: number): Error {

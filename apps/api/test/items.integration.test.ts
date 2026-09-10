@@ -239,4 +239,165 @@ describe('items HTTP', () => {
       statusCode: 404,
     })
   })
+
+  test('PATCH /api/items/:id updates name and unit and keeps sku and createdAt', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/items',
+      payload,
+    })
+    const item = created.json() as {
+      id: string
+      sku: string
+      name: string
+      unit: string
+      createdAt: string
+    }
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/items/${item.id}`,
+      payload: { name: 'Cimento CP-III', unit: 'kg' },
+    })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual({
+      id: item.id,
+      sku: 'CEM-50',
+      name: 'Cimento CP-III',
+      unit: 'kg',
+      createdAt: item.createdAt,
+    })
+  })
+
+  test('PATCH /api/items/:id ignores sku in the payload', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/items',
+      payload,
+    })
+    const { id } = created.json() as { id: string }
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/items/${id}`,
+      payload: { name: 'Cimento CP-III', unit: 'kg', sku: 'OUTRO' },
+    })
+    expect(response.statusCode).toBe(200)
+    expect((response.json() as { sku: string }).sku).toBe('CEM-50')
+
+    const list = await app.inject({ method: 'GET', url: '/api/items' })
+    const rows = list.json() as { id: string; sku: string }[]
+    expect(rows.find((row) => row.id === id)?.sku).toBe('CEM-50')
+  })
+
+  test('PATCH /api/items/:id with blank or whitespace name or unit returns 400 and does not persist', async () => {
+    const cases = [
+      { name: '', unit: 'kg' },
+      { name: '   ', unit: 'kg' },
+      { name: 'Cimento CP-III', unit: '' },
+      { name: 'Cimento CP-III', unit: '   ' },
+    ]
+
+    for (const input of cases) {
+      const sqlite = new Database(dbFile)
+      sqlite.exec('DELETE FROM items')
+      sqlite.close()
+
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/items',
+        payload,
+      })
+      const item = created.json() as { id: string }
+
+      const response = await app.inject({
+        method: 'PATCH',
+        url: `/api/items/${item.id}`,
+        payload: input,
+      })
+      expect(response.statusCode).toBe(400)
+      expect(response.json()).toEqual({
+        error: 'name and unit are required',
+        statusCode: 400,
+      })
+
+      const list = await app.inject({ method: 'GET', url: '/api/items' })
+      const rows = list.json() as { id: string; name: string; unit: string }[]
+      const persisted = rows.find((row) => row.id === item.id)
+      expect(persisted?.name).toBe('Cimento CP-II')
+      expect(persisted?.unit).toBe('saco')
+    }
+  })
+
+  test('PATCH /api/items/:id missing id returns 404', async () => {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/items/00000000-0000-4000-8000-000000000000',
+      payload: { name: 'A', unit: 'un' },
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json()).toEqual({
+      error: 'Item not found',
+      statusCode: 404,
+    })
+  })
+
+  test('PATCH /api/items/:id trims name and unit', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/items',
+      payload,
+    })
+    const { id } = created.json() as { id: string }
+
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/items/${id}`,
+      payload: { name: '  Cimento CP-III  ', unit: '  kg  ' },
+    })
+    expect(response.statusCode).toBe(200)
+    const body = response.json() as { name: string; unit: string }
+    expect(body.name).toBe('Cimento CP-III')
+    expect(body.unit).toBe('kg')
+
+    const list = await app.inject({ method: 'GET', url: '/api/items' })
+    const rows = list.json() as { id: string; name: string; unit: string }[]
+    const persisted = rows.find((row) => row.id === id)
+    expect(persisted?.name).toBe('Cimento CP-III')
+    expect(persisted?.unit).toBe('kg')
+  })
+
+  test('PATCH /api/items/:id with the same valid body again is 200 and does not create a row', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/items',
+      payload,
+    })
+    const item = created.json() as { id: string }
+
+    const first = await app.inject({
+      method: 'PATCH',
+      url: `/api/items/${item.id}`,
+      payload: { name: 'Cimento CP-III', unit: 'kg' },
+    })
+    expect(first.statusCode).toBe(200)
+
+    const second = await app.inject({
+      method: 'PATCH',
+      url: `/api/items/${item.id}`,
+      payload: { name: 'Cimento CP-III', unit: 'kg' },
+    })
+    expect(second.statusCode).toBe(200)
+    expect(second.json()).toEqual({
+      ...(first.json() as Record<string, unknown>),
+      name: 'Cimento CP-III',
+      unit: 'kg',
+      sku: 'CEM-50',
+    })
+
+    const list = await app.inject({ method: 'GET', url: '/api/items' })
+    const rows = list.json() as { id: string }[]
+    expect(rows.filter((row) => row.id === item.id)).toHaveLength(1)
+    expect(rows).toHaveLength(1)
+  })
 })

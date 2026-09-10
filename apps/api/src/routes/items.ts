@@ -18,4 +18,10 @@ export async function itemRoutes(fastify: FastifyInstance) {
     await items.deleteById(id)
     return reply.status(204).send()
   })
+
+  fastify.patch('/api/items/:id', async (request) => {
+    const { id } = request.params as { id: string }
+    const body = (request.body ?? {}) as { name?: string; unit?: string; sku?: string }
+    return items.updateById(id, body)
+  })
 }
