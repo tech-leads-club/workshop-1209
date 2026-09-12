@@ -13,6 +13,12 @@ export async function jobRoutes(fastify: FastifyInstance) {
     return reply.status(201).send(job)
   })
 
+  fastify.patch('/api/jobs/:id', async (request) => {
+    const { id } = request.params as { id: string }
+    const body = (request.body ?? {}) as { name?: string }
+    return jobs.updateById(id, body)
+  })
+
   fastify.delete('/api/jobs/:id', async (request, reply) => {
     const { id } = request.params as { id: string }
     await jobs.deleteById(id)

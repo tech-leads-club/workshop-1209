@@ -5,24 +5,25 @@ Roadmap: 3. Job
 
 ## Goal
 
-A signed-in User registers a Job as a named work site. The Job exists so later slices can issue quantity to it and assign Staff. This slice only creates, lists, and deletes the place.
+A signed-in User registers a Job as a named work site. The Job exists so later slices can issue quantity to it and assign Staff. A User may also rename a Job after it is created.
 
 ## Out of scope
 
 - Quantity, Stock, or Issue on a Job
 - Staff, Assignment, Requisition
-- Edit, code, address, client, or status
-- Role-restricted create or delete
+- Status, date, address, code, client, or turning Job into Warehouse
+- Role-restricted create, update, or delete
 - Finance, payroll, BOQ, RFQ, subcontract
 
 ## Domain rules
 
 - **R1** A Job has a name. The name is stored trimmed. A blank or whitespace-only name is rejected with 400 and nothing is persisted.
-- **R2** Job name is unique. A second Job with the same name is rejected with 409 and the first row stays.
+- **R2** Job name is unique. A second Job with the same name is rejected with 409 and the first row stays. Rename to an existing name is the same 409.
 - **R3** A Job does not hold quantity. The table and the HTTP body have no quantity field. This slice does not create Issue.
-- **R4** Any signed-in User (Administrator or Operator) may list, create, and delete a Job. A request without a session is rejected with 401. This slice has no 403.
-- **R5** Delete of an unknown id is rejected with 404. Delete of an existing Job succeeds and the row is gone.
+- **R4** Any signed-in User (Administrator or Operator) may list, create, update, and delete a Job. A request without a session is rejected with 401. This slice has no 403.
+- **R5** Delete or update of an unknown id is rejected with 404. Delete of an existing Job succeeds and the row is gone.
 - **R6** Create persists a UUID id and an ISO-8601 `createdAt` and returns that record.
+- **R7** Update changes only `name`. `id` and `createdAt` stay. Extra fields such as `quantity` are ignored.
 
 ## Scenarios
 
@@ -116,11 +117,67 @@ Covers: R4
 
 ### S12 — Job screen
 
-Covers: R1, R4, R5
+Covers: R1, R4, R5, R7
 
 - **Given** a signed-in User on the Job screen
-- **When** they create a Job, see it in the list, then delete it
-- **Then** the list shows the new name after create and no longer shows it after delete
+- **When** they create a Job, see it in the list, rename it, then delete it
+- **Then** the list shows the new name after create, the renamed name after save, and no longer shows it after delete
+
+### S13 — rename
+
+Covers: R1, R6, R7
+
+- **Given** a Job `{ id: X, name: "Site A", createdAt: T }` and a signed-in User
+- **When** PATCH `/api/jobs/X` with `{ "name": "Site B" }`
+- **Then** 200 and `{ id: X, name: "Site B", createdAt: T }` with no `quantity`
+
+### S14 — rename unique
+
+Covers: R2
+
+- **Given** Job A named `"Site A"` and Job B named `"Site B"`
+- **When** PATCH `/api/jobs/A` with `{ "name": "Site B" }`
+- **Then** 409 `{ "error": "Job already exists", "statusCode": 409 }` and GET still has A=`Site A` and B=`Site B`
+
+### S15 — rename blank
+
+Covers: R1
+
+- **Given** a Job named `"Site A"`
+- **When** PATCH `/api/jobs/:id` with blank or whitespace `name`
+- **Then** 400 `{ "error": "name is required", "statusCode": 400 }` and GET still has `name` `"Site A"` on that id
+
+### S16 — rename missing
+
+Covers: R5
+
+- **Given** a signed-in User and no Job with that id
+- **When** PATCH `/api/jobs/00000000-0000-4000-8000-000000000000` with `{ "name": "Site B" }`
+- **Then** 404 `{ "error": "Job not found", "statusCode": 404 }`
+
+### S17 — rename unauthenticated
+
+Covers: R4
+
+- **Given** no session
+- **When** PATCH `/api/jobs/:id`
+- **Then** 401 `{ "error": "Unauthorized", "statusCode": 401 }`
+
+### S18 — rename trims
+
+Covers: R1
+
+- **Given** a Job named `"Site A"`
+- **When** PATCH `/api/jobs/:id` with `{ "name": "  Site B  " }`
+- **Then** 200 and the persisted `name` is `"Site B"`
+
+### S19 — rename ignores quantity
+
+Covers: R3, R7
+
+- **Given** a Job named `"Site A"`
+- **When** PATCH `/api/jobs/:id` with `{ "name": "Site B", "quantity": 10 }`
+- **Then** 200, the body has no `quantity`, and GET of that id has no `quantity`
 
 ## HTTP contract
 
@@ -128,13 +185,15 @@ Covers: R1, R4, R5
 | --- | --- | --- | --- | --- |
 | GET | /api/jobs | session, any Role | 200 array | 401 |
 | POST | /api/jobs | session, any Role | 201 body | 400, 401, 409 |
+| PATCH | /api/jobs/:id | session, any Role | 200 body | 400, 401, 404, 409 |
 | DELETE | /api/jobs/:id | session, any Role | 204 | 401, 404 |
 
-Request body (POST):
+Request body (POST and PATCH):
 
 - `name` — string, required, trimmed
+- Extra fields such as `quantity` are ignored
 
-Response body (POST and list item):
+Response body (POST, PATCH, and list item):
 
 - `id` — UUID string
 - `name` — string
@@ -144,15 +203,15 @@ Response body (POST and list item):
 
 - **D1** Job is its own resource at `/api/jobs`, with the same route → service → repository trio as Warehouse. Rejected: nest under Warehouse or reuse the warehouses table. Why: a Job is not a Warehouse.
 - **D2** Unique index on `name`. The service maps a SQLite unique violation to 409 and does not `findByName`. Rejected: pre-check by name. Why: same contract as Warehouse name and Item SKU.
-- **D3** No update endpoint. Rejected: PATCH rename. Why: Warehouse has none; rename is not in this slice.
+- **D3** `PATCH /api/jobs/:id` renames a Job. Body `{ name }`. `id` and `createdAt` do not change. Rejected: PUT of the whole resource. Why: PUT invites replacing `id` / `createdAt`. WAL-3 supersedes the earlier “no update endpoint” decision.
 - **D4** Session only; both Roles may write. Rejected: Administrator-only create and 403. Why: that authz pattern does not exist yet and the actor for this slice is any signed-in User.
 - **D5** Schema is `id`, `name`, `created_at` only. Rejected: quantity or `warehouseId` on Job. Why: quantity lives in Stock; Job is not a Warehouse.
 
 ## Test obligations
 
-- Service unit: S2, S4, S5, S6, S7, S8 (every branch that changes the outcome). List (S1/S3) is a pass-through like Warehouse.
-- HTTP + real DB: S1–S11, including unique index (S6) and columns (S9)
-- Playwright MCP: S12 — Job screen create, list, delete. No Playwright files in git.
+- Service unit: S2, S4, S5, S6, S7, S8, S13–S16, S18, S19 (every branch that changes the outcome). List (S1/S3) is a pass-through like Warehouse.
+- HTTP + real DB: S1–S11 and S13–S19, including unique index (S6, S14) and columns (S9)
+- Playwright MCP: S12 — Job screen create, list, rename, delete. No Playwright files in git.
 
 ## Likely files
 

@@ -283,6 +283,13 @@ select:focus {
   grid-template-columns: 1fr auto;
 }
 
+.job-edit {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-sm);
+  align-items: end;
+}
+
 .record-list li.user {
   grid-template-columns: 2fr 1fr auto;
 }
