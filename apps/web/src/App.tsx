@@ -50,6 +50,54 @@ type Movement = {
   createdAt: string
 }
 
+function JobRow({
+  job,
+  onSave,
+  onDelete,
+}: {
+  job: Job
+  onSave: (id: string, name: string) => Promise<void>
+  onDelete: (id: string) => void
+}) {
+  const [name, setName] = useState(job.name)
+
+  useEffect(() => {
+    setName(job.name)
+  }, [job.name])
+
+  return (
+    <li className="job">
+      <form
+        className="job-edit"
+        onSubmit={(event) => {
+          event.preventDefault()
+          void onSave(job.id, name)
+        }}
+      >
+        <label>
+          Name
+          <input
+            name="name"
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
+        </label>
+        <button className="btn-secondary btn-compact" type="submit">
+          Save
+        </button>
+      </form>
+      <button
+        className="btn-secondary btn-compact"
+        type="button"
+        onClick={() => void onDelete(job.id)}
+      >
+        Delete
+      </button>
+    </li>
+  )
+}
+
 function App() {
   const [ready, setReady] = useState(false)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -290,6 +338,21 @@ function App() {
     }
     const body = (await response.json()) as { error?: string }
     setError(body.error ?? 'Could not create Job')
+  }
+
+  async function onUpdateJob(id: string, name: string) {
+    setError('')
+    const response = await request(`/api/jobs/${id}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (response.ok) {
+      await refreshJobs()
+      return
+    }
+    const body = (await response.json()) as { error?: string }
+    setError(body.error ?? 'Could not update Job')
   }
 
   async function onDeleteJob(id: string) {
@@ -642,16 +705,12 @@ function App() {
           ) : (
             <ul className="record-list">
               {jobs.map((job) => (
-                <li className="job" key={job.id}>
-                  <span>{job.name}</span>
-                  <button
-                    className="btn-secondary btn-compact"
-                    type="button"
-                    onClick={() => void onDeleteJob(job.id)}
-                  >
-                    Delete
-                  </button>
-                </li>
+                <JobRow
+                  key={job.id}
+                  job={job}
+                  onSave={onUpdateJob}
+                  onDelete={onDeleteJob}
+                />
               ))}
             </ul>
           )}
