@@ -26,7 +26,7 @@ Touches `jobRoutes`, `JobService`, `JobRepository`, `App.tsx` Job list, and `doc
 | --- | --- | --- |
 | Public rename contract | `PATCH /api/jobs/:id` body `{ name }`; `200` Job `{ id, name, createdAt }`; `400` / `404` / `409` / `401` `{ error, statusCode }` | PUT of the whole resource — invites replacing `id` / `createdAt` |
 
-- Nothing else in this change is hard to reverse
+| Job row identity for save | `li.job` carries `data-id={job.id}` so the editor stays bound to the same id after the name changes | locating the row by the current input value — the locator dies as soon as the user types |
 
 ## Checks
 
@@ -60,11 +60,11 @@ Proof: `bun test apps/api/src/services/job.service.test.ts -t "updateById ignore
 Proof: `bun test apps/api/test/jobs.integration.test.ts -t "PATCH /api/jobs/:id ignores quantity"`
 
 **C8** - On the Job screen, changing the name in the row editor and saving shows the new name on the same id
-Proof: `bunx playwright test /tmp/job-rename-ui.spec.ts -g "Job row save shows the new name"`
+Proof: `bunx playwright test /tmp/job-rename-ui.spec.ts --config=/tmp/playwright.config.ts -g "Job row save shows the new name"`
 
 **C9** - Job has no quantity; Stock and Inventory screens gain no Job field or action; the Inventory Issue Job select lists the same id with the new name
 Proof: `bun test apps/api/test/jobs.integration.test.ts -t "S9 jobs table has no quantity column"`
-Proof: `bunx playwright test /tmp/job-rename-ui.spec.ts -g "Stock and Inventory stay without Job quantity and Issue select shows the new name"`
+Proof: `bunx playwright test /tmp/job-rename-ui.spec.ts --config=/tmp/playwright.config.ts -g "Stock and Inventory stay without Job quantity and Issue select shows the new name"`
 
 ## Swept
 
