@@ -26,7 +26,7 @@ Touches `jobRoutes`, `JobService`, `JobRepository`, `App.tsx` Job list, and `doc
 | --- | --- | --- |
 | Public rename contract | `PATCH /api/jobs/:id` body `{ name }`; `200` Job `{ id, name, createdAt }`; `400` / `404` / `409` / `401` `{ error, statusCode }` | PUT of the whole resource — invites replacing `id` / `createdAt` |
 
-| Job row identity for save | `li.job` carries `data-id={job.id}` so the editor stays bound to the same id after the name changes | locating the row by the current input value — the locator dies as soon as the user types |
+- Nothing else in this change is hard to reverse. `data-id` on the Job row is a DOM hook, not a contract.
 
 ## Checks
 
