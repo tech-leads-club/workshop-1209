@@ -66,7 +66,7 @@ function JobRow({
   }, [job.name])
 
   return (
-    <li className="job">
+    <li className="job" data-id={job.id}>
       <form
         className="job-edit"
         onSubmit={(event) => {
