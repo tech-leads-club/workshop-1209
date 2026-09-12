@@ -28,6 +28,23 @@ export class JobRepository {
     })
   }
 
+  async updateById(id: string, name: string): Promise<JobRecord | undefined> {
+    const updated = await this.db
+      .update(jobs)
+      .set({ name })
+      .where(eq(jobs.id, id))
+      .returning()
+    const row = updated[0]
+    if (!row) {
+      return undefined
+    }
+    return {
+      id: row.id,
+      name: row.name,
+      createdAt: row.createdAt,
+    }
+  }
+
   async deleteById(id: string): Promise<boolean> {
     const deleted = await this.db
       .delete(jobs)

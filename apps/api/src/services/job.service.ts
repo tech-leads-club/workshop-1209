@@ -35,6 +35,27 @@ export class JobService {
     return job
   }
 
+  async updateById(id: string, input: JobInput): Promise<JobRecord> {
+    const name = input.name?.trim() ?? ''
+    if (!name) {
+      throw httpError('name is required', 400)
+    }
+
+    let updated: JobRecord | undefined
+    try {
+      updated = await this.jobs.updateById(id, name)
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw httpError('Job already exists', 409)
+      }
+      throw error
+    }
+    if (!updated) {
+      throw httpError('Job not found', 404)
+    }
+    return updated
+  }
+
   async deleteById(id: string): Promise<void> {
     let deleted: boolean
     try {

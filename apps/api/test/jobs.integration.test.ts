@@ -144,6 +144,192 @@ describe('jobs HTTP', () => {
     expect(rows.filter((row) => row.name === 'Site A')).toHaveLength(1)
   })
 
+  test('PATCH /api/jobs/:id renames the Job and keeps id and createdAt', async () => {
+    const created = await request({
+      method: 'POST',
+      url: '/api/jobs',
+      payload: jobPayload,
+    })
+    const job = created.json() as { id: string; name: string; createdAt: string }
+
+    const response = await request({
+      method: 'PATCH',
+      url: `/api/jobs/${job.id}`,
+      payload: { name: 'Site B' },
+    })
+    expect(response.statusCode).toBe(200)
+    const body = response.json() as Record<string, unknown>
+    expect(body).toEqual({
+      id: job.id,
+      name: 'Site B',
+      createdAt: job.createdAt,
+    })
+    expect('quantity' in body).toBe(false)
+
+    const again = await request({
+      method: 'PATCH',
+      url: `/api/jobs/${job.id}`,
+      payload: { name: 'Site B' },
+    })
+    expect(again.statusCode).toBe(200)
+    expect(again.json()).toEqual({
+      id: job.id,
+      name: 'Site B',
+      createdAt: job.createdAt,
+    })
+
+    const list = await request({ method: 'GET', url: '/api/jobs' })
+    const rows = list.json() as Record<string, unknown>[]
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toEqual({
+      id: job.id,
+      name: 'Site B',
+      createdAt: job.createdAt,
+    })
+  })
+
+  test('PATCH /api/jobs/:id duplicate name returns 409 and keeps original names', async () => {
+    const first = await request({
+      method: 'POST',
+      url: '/api/jobs',
+      payload: { name: 'Site A' },
+    })
+    const second = await request({
+      method: 'POST',
+      url: '/api/jobs',
+      payload: { name: 'Site B' },
+    })
+    const jobA = first.json() as { id: string; name: string; createdAt: string }
+    const jobB = second.json() as { id: string; name: string; createdAt: string }
+
+    const response = await request({
+      method: 'PATCH',
+      url: `/api/jobs/${jobA.id}`,
+      payload: { name: 'Site B' },
+    })
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({
+      error: 'Job already exists',
+      statusCode: 409,
+    })
+
+    const list = await request({ method: 'GET', url: '/api/jobs' })
+    const rows = list.json() as { id: string; name: string }[]
+    expect(rows).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: jobA.id, name: 'Site A' }),
+        expect.objectContaining({ id: jobB.id, name: 'Site B' }),
+      ]),
+    )
+    expect(rows).toHaveLength(2)
+  })
+
+  test('PATCH /api/jobs/:id with blank or whitespace name returns 400 and does not persist', async () => {
+    const created = await request({
+      method: 'POST',
+      url: '/api/jobs',
+      payload: jobPayload,
+    })
+    const job = created.json() as { id: string; name: string; createdAt: string }
+
+    for (const name of ['', '   ']) {
+      const response = await request({
+        method: 'PATCH',
+        url: `/api/jobs/${job.id}`,
+        payload: { name },
+      })
+      expect(response.statusCode).toBe(400)
+      expect(response.json()).toEqual({
+        error: 'name is required',
+        statusCode: 400,
+      })
+
+      const list = await request({ method: 'GET', url: '/api/jobs' })
+      const rows = list.json() as { id: string; name: string }[]
+      expect(rows.find((row) => row.id === job.id)?.name).toBe('Site A')
+    }
+  })
+
+  test('PATCH /api/jobs/:id missing id returns 404', async () => {
+    const response = await request({
+      method: 'PATCH',
+      url: '/api/jobs/00000000-0000-4000-8000-000000000000',
+      payload: { name: 'Site B' },
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json()).toEqual({
+      error: 'Job not found',
+      statusCode: 404,
+    })
+  })
+
+  test('PATCH /api/jobs/:id without a session returns 401', async () => {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: '/api/jobs/00000000-0000-4000-8000-000000000000',
+      payload: { name: 'Site B' },
+    })
+    expect(response.statusCode).toBe(401)
+    expect(response.json()).toEqual({
+      error: 'Unauthorized',
+      statusCode: 401,
+    })
+  })
+
+  test('PATCH /api/jobs/:id trims name', async () => {
+    const created = await request({
+      method: 'POST',
+      url: '/api/jobs',
+      payload: jobPayload,
+    })
+    const job = created.json() as { id: string }
+
+    const response = await request({
+      method: 'PATCH',
+      url: `/api/jobs/${job.id}`,
+      payload: { name: '  Site B  ' },
+    })
+    expect(response.statusCode).toBe(200)
+    expect((response.json() as { name: string }).name).toBe('Site B')
+
+    const list = await request({ method: 'GET', url: '/api/jobs' })
+    const rows = list.json() as { id: string; name: string }[]
+    expect(rows.find((row) => row.id === job.id)?.name).toBe('Site B')
+  })
+
+  test('PATCH /api/jobs/:id ignores quantity', async () => {
+    const created = await request({
+      method: 'POST',
+      url: '/api/jobs',
+      payload: jobPayload,
+    })
+    const job = created.json() as { id: string; createdAt: string }
+
+    const response = await request({
+      method: 'PATCH',
+      url: `/api/jobs/${job.id}`,
+      payload: { name: 'Site B', quantity: 10 },
+    })
+    expect(response.statusCode).toBe(200)
+    const body = response.json() as Record<string, unknown>
+    expect(body).toEqual({
+      id: job.id,
+      name: 'Site B',
+      createdAt: job.createdAt,
+    })
+    expect('quantity' in body).toBe(false)
+
+    const list = await request({ method: 'GET', url: '/api/jobs' })
+    const rows = list.json() as Record<string, unknown>[]
+    const persisted = rows.find((row) => row.id === job.id)
+    expect(persisted).toEqual({
+      id: job.id,
+      name: 'Site B',
+      createdAt: job.createdAt,
+    })
+    expect(persisted && 'quantity' in persisted).toBe(false)
+  })
+
   test('S7 DELETE /api/jobs/:id returns 204 and removes the Job', async () => {
     const created = await request({
       method: 'POST',
