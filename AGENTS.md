@@ -27,7 +27,7 @@ HTTP: domain under `/api/...`. Health is `GET /health`. Errors: throw `Error` wi
 
 ## Linear backlog
 
-Use the team Wald-test for backlog for this project, always follow the tlc-plan task format
+Use the team Wald-test for backlog for this project in Linear
 
 ## Screens
 
