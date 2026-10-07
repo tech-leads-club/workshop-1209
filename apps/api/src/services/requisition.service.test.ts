@@ -246,4 +246,29 @@ describe('RequisitionService', () => {
 
     expect(requisitions.createPurchase.notCalled).toBe(true)
   })
+
+  test('convert throws 409 when purchaseId is set before validating Supplier', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves({
+      id: 'requisition-1',
+      itemId: 'item-1',
+      jobId: 'job-1',
+      quantity: 12.5,
+      purchaseId: 'purchase-1',
+      createdAt: '2026-10-07T00:00:00.000Z',
+    })
+    const service = new RequisitionService(requisitions)
+
+    try {
+      await service.createPurchase('requisition-1', {}, 'Administrator')
+      throw new Error('expected createPurchase to throw')
+    } catch (error) {
+      expect((error as Error & { statusCode: number }).statusCode).toBe(409)
+      expect((error as Error).message).toBe('Requisition already has a Purchase')
+    }
+
+    expect(requisitions.createPurchase.notCalled).toBe(true)
+    expect(requisitions.existsSupplier.notCalled).toBe(true)
+    expect(requisitions.existsWarehouse.notCalled).toBe(true)
+  })
 })

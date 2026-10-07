@@ -73,6 +73,9 @@ export class RequisitionService {
     if (role !== 'Administrator') {
       throw httpError('Administrator role is required', 403)
     }
+    if (found.purchaseId !== null) {
+      throw httpError('Requisition already has a Purchase', 409)
+    }
 
     const supplierId = input.supplierId?.trim() ?? ''
     const warehouseId = input.warehouseId?.trim() ?? ''
