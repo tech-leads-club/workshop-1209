@@ -236,6 +236,53 @@ describe('requisitions HTTP', () => {
     expect(jobs.some((row) => row.id === job.id)).toBe(true)
   })
 
+  test('POST /api/requisitions/:id/purchases returns 201 and links purchaseId', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+
+    const response = await request({
+      method: 'POST',
+      url: `/api/requisitions/${requisition.id}/purchases`,
+      payload: { supplierId: supplier.id, warehouseId: warehouse.id },
+    })
+    expect(response.statusCode).toBe(201)
+    const purchase = response.json() as Record<string, unknown>
+    expect(purchase.id).toMatch(UUID)
+    expect(purchase.supplierId).toBe(supplier.id)
+    expect(purchase.itemId).toBe(item.id)
+    expect(purchase.warehouseId).toBe(warehouse.id)
+    expect(purchase.quantity).toBe(12.5)
+    expect(purchase.createdAt).toMatch(ISO_8601)
+    expect(Object.keys(purchase).sort()).toEqual([
+      'createdAt',
+      'id',
+      'itemId',
+      'quantity',
+      'supplierId',
+      'warehouseId',
+    ])
+
+    const list = (await request({ method: 'GET', url: '/api/requisitions' })).json() as {
+      id: string
+      purchaseId: string | null
+    }[]
+    expect(list).toHaveLength(1)
+    expect(list[0]?.id).toBe(requisition.id)
+    expect(list[0]?.purchaseId).toBe(purchase.id)
+  })
+
   test('DELETE /api/requisitions/:id returns 404 when the id does not exist', async () => {
     const response = await request({
       method: 'DELETE',
@@ -246,6 +293,57 @@ describe('requisitions HTTP', () => {
       error: 'Requisition not found',
       statusCode: 404,
     })
+  })
+
+  test('DELETE /api/requisitions/:id returns 409 when purchaseId is set', async () => {
+    const { item, job } = await seedItemAndJob()
+    const created = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const purchase = (
+      await request({
+        method: 'POST',
+        url: '/api/purchases',
+        payload: {
+          supplierId: supplier.id,
+          itemId: item.id,
+          warehouseId: warehouse.id,
+          quantity: 12.5,
+        },
+      })
+    ).json() as { id: string }
+
+    const sqlite = new Database(dbFile)
+    sqlite.query('UPDATE requisitions SET purchase_id = ? WHERE id = ?').run(purchase.id, created.id)
+    sqlite.close()
+
+    const response = await request({
+      method: 'DELETE',
+      url: `/api/requisitions/${created.id}`,
+    })
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({
+      error: 'Requisition has Purchase',
+      statusCode: 409,
+    })
+
+    const list = (await request({ method: 'GET', url: '/api/requisitions' })).json() as {
+      id: string
+      purchaseId: string | null
+    }[]
+    expect(list).toHaveLength(1)
+    expect(list[0]?.id).toBe(created.id)
+    expect(list[0]?.purchaseId).toBe(purchase.id)
   })
 
   test('DELETE /api/requisitions/:id returns 204 when purchaseId is null', async () => {
