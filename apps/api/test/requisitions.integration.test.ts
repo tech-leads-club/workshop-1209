@@ -87,6 +87,25 @@ describe('requisitions HTTP', () => {
     ])
   })
 
+  test('POST /api/requisitions with missing itemId, jobId, or quantity 0, -1, or "12.5" returns 400', async () => {
+    const { item, job } = await seedItemAndJob()
+    const cases = [
+      { jobId: job.id, quantity: 12.5 },
+      { itemId: item.id, quantity: 12.5 },
+      { itemId: item.id, jobId: job.id },
+      { itemId: item.id, jobId: job.id, quantity: 0 },
+      { itemId: item.id, jobId: job.id, quantity: -1 },
+      { itemId: item.id, jobId: job.id, quantity: '12.5' },
+    ]
+
+    for (const payload of cases) {
+      const response = await request({ method: 'POST', url: '/api/requisitions', payload })
+      expect(response.statusCode).toBe(400)
+      expect((response.json() as { statusCode: number }).statusCode).toBe(400)
+      expect((await request({ method: 'GET', url: '/api/requisitions' })).json()).toEqual([])
+    }
+  })
+
   test('GET /api/requisitions returns the saved Requisition', async () => {
     const { item, job } = await seedItemAndJob()
     const created = (
