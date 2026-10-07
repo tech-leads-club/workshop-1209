@@ -17,8 +17,14 @@ export class RequisitionService {
   }
 
   async create(input: RequisitionInput): Promise<RequisitionRecord> {
-    const itemId = input.itemId ?? ''
-    const jobId = input.jobId ?? ''
+    const itemId = input.itemId?.trim() ?? ''
+    const jobId = input.jobId?.trim() ?? ''
+    if (!itemId || !jobId || input.quantity === undefined || input.quantity === null) {
+      throw httpError('itemId, jobId, and a positive quantity are required', 400)
+    }
+    if (!isPositiveQuantity(input.quantity)) {
+      throw httpError('quantity must be a positive number', 400)
+    }
     if (
       !(await this.requisitions.existsItem(itemId)) ||
       !(await this.requisitions.existsJob(jobId))
@@ -30,13 +36,17 @@ export class RequisitionService {
       id: crypto.randomUUID(),
       itemId,
       jobId,
-      quantity: input.quantity as number,
+      quantity: input.quantity,
       purchaseId: null,
       createdAt: new Date().toISOString(),
     }
     await this.requisitions.create(requisition)
     return requisition
   }
+}
+
+function isPositiveQuantity(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
 }
 
 function httpError(message: string, statusCode: number): Error {

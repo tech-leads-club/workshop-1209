@@ -26,4 +26,33 @@ describe('RequisitionService', () => {
     expect(requisitions.create.calledOnce).toBe(true)
     expect(requisitions.create.firstCall.args[0]).toEqual(created)
   })
+
+  test('create with missing itemId, jobId, or quantity 0, -1, NaN, Infinity, or "12.5" throws 400', async () => {
+    const cases = [
+      { jobId: 'job-1', quantity: 12.5 },
+      { itemId: 'item-1', quantity: 12.5 },
+      { itemId: 'item-1', jobId: 'job-1' },
+      { itemId: 'item-1', jobId: 'job-1', quantity: 0 },
+      { itemId: 'item-1', jobId: 'job-1', quantity: -1 },
+      { itemId: 'item-1', jobId: 'job-1', quantity: NaN },
+      { itemId: 'item-1', jobId: 'job-1', quantity: Infinity },
+      { itemId: 'item-1', jobId: 'job-1', quantity: '12.5' },
+    ]
+
+    for (const input of cases) {
+      const requisitions = sinon.createStubInstance(RequisitionRepository)
+      requisitions.existsItem.resolves(true)
+      requisitions.existsJob.resolves(true)
+      const service = new RequisitionService(requisitions)
+
+      try {
+        await service.create(input)
+        throw new Error(`expected create to throw for ${JSON.stringify(input)}`)
+      } catch (error) {
+        expect((error as Error & { statusCode: number }).statusCode).toBe(400)
+      }
+
+      expect(requisitions.create.notCalled).toBe(true)
+    }
+  })
 })
