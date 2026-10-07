@@ -13,6 +13,7 @@ Bun.env.LOG_LEVEL = 'silent'
 const { container } = await import('../src/container/container')
 const { createServer } = await import('../src/server')
 
+const operator = { email: 'op-req@local', password: 'secret', role: 'Operator' }
 const UUID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
@@ -59,6 +60,7 @@ describe('requisitions HTTP', () => {
     sqlite.exec('DELETE FROM jobs')
     sqlite.exec('DELETE FROM warehouses')
     sqlite.exec('DELETE FROM items')
+    sqlite.exec("DELETE FROM users WHERE email != 'admin@local'")
     sqlite.close()
   })
 
@@ -234,6 +236,53 @@ describe('requisitions HTTP', () => {
 
     const jobs = (await request({ method: 'GET', url: '/api/jobs' })).json() as { id: string }[]
     expect(jobs.some((row) => row.id === job.id)).toBe(true)
+  })
+
+  async function operatorCookie() {
+    const createdUser = await request({
+      method: 'POST',
+      url: '/api/users',
+      payload: operator,
+    })
+    expect(createdUser.statusCode).toBe(201)
+    const signedIn = await app.inject({
+      method: 'POST',
+      url: '/api/login',
+      payload: { email: operator.email, password: operator.password },
+    })
+    expect(signedIn.statusCode).toBe(200)
+    return signedIn.cookies.map((entry) => `${entry.name}=${entry.value}`).join('; ')
+  }
+
+  test('POST /api/requisitions/:id/purchases returns 403 for Operator', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const cookie = await operatorCookie()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/requisitions/${requisition.id}/purchases`,
+      headers: { cookie },
+      payload: { supplierId: supplier.id, warehouseId: warehouse.id },
+    })
+    expect(response.statusCode).toBe(403)
+    expect(response.json()).toEqual({
+      error: 'Administrator role is required',
+      statusCode: 403,
+    })
+    expect((await request({ method: 'GET', url: '/api/purchases' })).json()).toEqual([])
   })
 
   test('POST /api/requisitions/:id/purchases does not create a Movement or change Stock', async () => {
