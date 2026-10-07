@@ -12,6 +12,10 @@ export type RequisitionInput = {
 export class RequisitionService {
   constructor(private readonly requisitions: RequisitionRepository) {}
 
+  list(): Promise<RequisitionRecord[]> | RequisitionRecord[] {
+    return this.requisitions.list()
+  }
+
   async create(input: RequisitionInput): Promise<RequisitionRecord> {
     const itemId = input.itemId ?? ''
     const jobId = input.jobId ?? ''

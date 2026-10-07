@@ -86,4 +86,19 @@ describe('requisitions HTTP', () => {
       'quantity',
     ])
   })
+
+  test('GET /api/requisitions returns the saved Requisition', async () => {
+    const { item, job } = await seedItemAndJob()
+    const created = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json()
+
+    const response = await request({ method: 'GET', url: '/api/requisitions' })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual([created])
+  })
 })

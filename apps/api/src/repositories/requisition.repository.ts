@@ -14,6 +14,18 @@ export type RequisitionRecord = {
 export class RequisitionRepository {
   constructor(private readonly db: AppDatabase) {}
 
+  async list(): Promise<RequisitionRecord[]> {
+    const rows = await this.db.select().from(requisitions)
+    return rows.map((row) => ({
+      id: row.id,
+      itemId: row.itemId,
+      jobId: row.jobId,
+      quantity: row.quantity,
+      purchaseId: row.purchaseId,
+      createdAt: row.createdAt,
+    }))
+  }
+
   async existsItem(id: string): Promise<boolean> {
     const rows = await this.db
       .select({ id: items.id })
