@@ -55,4 +55,28 @@ describe('RequisitionService', () => {
       expect(requisitions.create.notCalled).toBe(true)
     }
   })
+
+  test('create with a missing Item or Job throws 400', async () => {
+    const cases = [
+      { item: false, job: true },
+      { item: true, job: false },
+    ]
+
+    for (const refs of cases) {
+      const requisitions = sinon.createStubInstance(RequisitionRepository)
+      requisitions.existsItem.resolves(refs.item)
+      requisitions.existsJob.resolves(refs.job)
+      const service = new RequisitionService(requisitions)
+
+      try {
+        await service.create({ itemId: 'item-1', jobId: 'job-1', quantity: 12.5 })
+        throw new Error('expected create to throw')
+      } catch (error) {
+        expect((error as Error & { statusCode: number }).statusCode).toBe(400)
+        expect((error as Error).message).toBe('Item or Job not found')
+      }
+
+      expect(requisitions.create.notCalled).toBe(true)
+    }
+  })
 })
