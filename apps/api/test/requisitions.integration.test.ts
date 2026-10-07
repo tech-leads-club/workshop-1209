@@ -61,6 +61,12 @@ describe('requisitions HTTP', () => {
     container.clear()
   })
 
+  test('GET /api/requisitions on an empty table returns 200 []', async () => {
+    const response = await request({ method: 'GET', url: '/api/requisitions' })
+    expect(response.statusCode).toBe(200)
+    expect(response.json()).toEqual([])
+  })
+
   test('POST /api/requisitions returns 201 with purchaseId null', async () => {
     const { item, job } = await seedItemAndJob()
     const response = await request({
