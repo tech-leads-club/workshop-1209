@@ -236,6 +236,34 @@ describe('requisitions HTTP', () => {
     expect(jobs.some((row) => row.id === job.id)).toBe(true)
   })
 
+  test('POST /api/requisitions/:id/purchases does not create a Movement or change Stock', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const stockBefore = (await request({ method: 'GET', url: '/api/stock' })).json()
+    const movementsBefore = (await request({ method: 'GET', url: '/api/movements' })).json()
+
+    const response = await request({
+      method: 'POST',
+      url: `/api/requisitions/${requisition.id}/purchases`,
+      payload: { supplierId: supplier.id, warehouseId: warehouse.id },
+    })
+    expect(response.statusCode).toBe(201)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+  })
+
   test('POST /api/requisitions/:id/purchases returns 201 and links purchaseId', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
