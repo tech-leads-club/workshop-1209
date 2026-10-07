@@ -236,6 +236,18 @@ describe('requisitions HTTP', () => {
     expect(jobs.some((row) => row.id === job.id)).toBe(true)
   })
 
+  test('DELETE /api/requisitions/:id returns 404 when the id does not exist', async () => {
+    const response = await request({
+      method: 'DELETE',
+      url: '/api/requisitions/00000000-0000-4000-8000-000000000000',
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json()).toEqual({
+      error: 'Requisition not found',
+      statusCode: 404,
+    })
+  })
+
   test('DELETE /api/requisitions/:id returns 204 when purchaseId is null', async () => {
     const { item, job } = await seedItemAndJob()
     const created = (
