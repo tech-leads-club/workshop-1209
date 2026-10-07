@@ -13,12 +13,7 @@ Language lives in `CONTEXT.md`. Terms below that are not in the glossary yet are
 - **Inventory** — Movements that change Stock: Receipt, Transfer between Warehouses, Issue to a Job.
 - **Procurement** — Supplier and Purchase. A Receipt from a Purchase raises Stock.
 - **Staff and Assignment** — Staff as people who can be allocated. Assignment ties Staff to a Job for a period.
-
-## Phases
-
-### 7. Requisition
-
-Operator asks for an Item for a Job. Administrator turns that into a Purchase.
+- **Requisition** — Operator asks for an Item for a Job. Administrator turns that into a Purchase.
 
 ## Out of scope
 

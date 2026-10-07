@@ -269,6 +269,32 @@ describe('requisitions HTTP', () => {
     })
   })
 
+  test('POST /api/purchases returns 201 for Operator without a Requisition', async () => {
+    const { item } = await seedItemAndJob()
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const cookie = await operatorCookie()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/purchases',
+      headers: { cookie },
+      payload: {
+        supplierId: supplier.id,
+        itemId: item.id,
+        warehouseId: warehouse.id,
+        quantity: 12.5,
+      },
+    })
+    expect(response.statusCode).toBe(201)
+    expect((response.json() as { quantity: number }).quantity).toBe(12.5)
+    expect((await request({ method: 'GET', url: '/api/requisitions' })).json()).toEqual([])
+  })
+
   test('DELETE /api/purchases/:id returns 409 when a Requisition references the Purchase', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
