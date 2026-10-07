@@ -269,6 +269,51 @@ describe('requisitions HTTP', () => {
     })
   })
 
+  test('POST /api/requisitions/:id/purchases returns 409 when purchaseId is set', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const purchase = (
+      await request({
+        method: 'POST',
+        url: '/api/purchases',
+        payload: {
+          supplierId: supplier.id,
+          itemId: item.id,
+          warehouseId: warehouse.id,
+          quantity: 12.5,
+        },
+      })
+    ).json() as { id: string }
+    const sqlite = new Database(dbFile)
+    sqlite.query('UPDATE requisitions SET purchase_id = ? WHERE id = ?').run(purchase.id, requisition.id)
+    sqlite.close()
+    const before = (await request({ method: 'GET', url: '/api/purchases' })).json() as unknown[]
+
+    const response = await request({
+      method: 'POST',
+      url: `/api/requisitions/${requisition.id}/purchases`,
+      payload: { warehouseId: warehouse.id },
+    })
+    expect(response.statusCode).toBe(409)
+    expect(response.json()).toEqual({
+      error: 'Requisition already has a Purchase',
+      statusCode: 409,
+    })
+    expect((await request({ method: 'GET', url: '/api/purchases' })).json()).toEqual(before)
+  })
+
   test('POST /api/requisitions/:id/purchases returns 403 for Operator when purchaseId is set', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
