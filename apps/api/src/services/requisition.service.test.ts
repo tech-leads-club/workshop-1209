@@ -168,4 +168,34 @@ describe('RequisitionService', () => {
     expect(requisitions.createPurchase.firstCall.args[0]).toEqual(purchase)
     expect(requisitions.setPurchaseId.calledOnceWith('requisition-1', purchase.id)).toBe(true)
   })
+
+  test('convert for Operator throws 403 and does not create a Purchase', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves({
+      id: 'requisition-1',
+      itemId: 'item-1',
+      jobId: 'job-1',
+      quantity: 12.5,
+      purchaseId: null,
+      createdAt: '2026-10-07T00:00:00.000Z',
+    })
+    requisitions.existsSupplier.resolves(true)
+    requisitions.existsWarehouse.resolves(true)
+    const service = new RequisitionService(requisitions)
+
+    try {
+      await service.createPurchase(
+        'requisition-1',
+        { supplierId: 'supplier-1', warehouseId: 'warehouse-1' },
+        'Operator',
+      )
+      throw new Error('expected createPurchase to throw')
+    } catch (error) {
+      expect((error as Error & { statusCode: number }).statusCode).toBe(403)
+      expect((error as Error).message).toBe('Administrator role is required')
+    }
+
+    expect(requisitions.createPurchase.notCalled).toBe(true)
+    expect(requisitions.setPurchaseId.notCalled).toBe(true)
+  })
 })
