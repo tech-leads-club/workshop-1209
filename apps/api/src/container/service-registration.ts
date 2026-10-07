@@ -4,6 +4,7 @@ import { JobRepository } from '../repositories/job.repository'
 import { MovementRepository } from '../repositories/movement.repository'
 import { AssignmentRepository } from '../repositories/assignment.repository'
 import { PurchaseRepository } from '../repositories/purchase.repository'
+import { RequisitionRepository } from '../repositories/requisition.repository'
 import { StaffRepository } from '../repositories/staff.repository'
 import { StockRepository } from '../repositories/stock.repository'
 import { SupplierRepository } from '../repositories/supplier.repository'
@@ -14,6 +15,7 @@ import { MovementService } from '../services/movement.service'
 import { JobService } from '../services/job.service'
 import { AssignmentService } from '../services/assignment.service'
 import { PurchaseService } from '../services/purchase.service'
+import { RequisitionService } from '../services/requisition.service'
 import { StaffService } from '../services/staff.service'
 import { StockService } from '../services/stock.service'
 import { SupplierService } from '../services/supplier.service'
@@ -86,6 +88,14 @@ export function registerServices(): void {
   container.register(
     tokens.purchaseService,
     (c) => new PurchaseService(c.get(tokens.purchaseRepository)),
+  )
+  container.register(
+    tokens.requisitionRepository,
+    (c) => new RequisitionRepository(c.get(tokens.db)),
+  )
+  container.register(
+    tokens.requisitionService,
+    (c) => new RequisitionService(c.get(tokens.requisitionRepository)),
   )
   container.register(
     tokens.staffRepository,

@@ -49,6 +49,8 @@ export const tokens = {
   supplierService: 'supplierService',
   purchaseRepository: 'purchaseRepository',
   purchaseService: 'purchaseService',
+  requisitionRepository: 'requisitionRepository',
+  requisitionService: 'requisitionService',
   staffRepository: 'staffRepository',
   staffService: 'staffService',
   assignmentRepository: 'assignmentRepository',

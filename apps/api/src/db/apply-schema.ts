@@ -82,6 +82,18 @@ export function applySchema(sqlite: Database): void {
       FOREIGN KEY (warehouse_id) REFERENCES warehouses(id)
     );
 
+    CREATE TABLE IF NOT EXISTS requisitions (
+      id TEXT PRIMARY KEY NOT NULL,
+      item_id TEXT NOT NULL,
+      job_id TEXT NOT NULL,
+      quantity REAL NOT NULL,
+      purchase_id TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (item_id) REFERENCES items(id),
+      FOREIGN KEY (job_id) REFERENCES jobs(id),
+      FOREIGN KEY (purchase_id) REFERENCES purchases(id)
+    );
+
     CREATE TABLE IF NOT EXISTS movements (
       id TEXT PRIMARY KEY NOT NULL,
       type TEXT NOT NULL,

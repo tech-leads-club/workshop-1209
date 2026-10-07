@@ -60,6 +60,19 @@ export const purchases = sqliteTable('purchases', {
   createdAt: text('created_at').notNull(),
 })
 
+export const requisitions = sqliteTable('requisitions', {
+  id: text('id').primaryKey(),
+  itemId: text('item_id')
+    .notNull()
+    .references(() => items.id),
+  jobId: text('job_id')
+    .notNull()
+    .references(() => jobs.id),
+  quantity: real('quantity').notNull(),
+  purchaseId: text('purchase_id').references(() => purchases.id),
+  createdAt: text('created_at').notNull(),
+})
+
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),

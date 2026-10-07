@@ -16,6 +16,7 @@ import { itemRoutes } from './routes/items'
 import { jobRoutes } from './routes/jobs'
 import { movementRoutes } from './routes/movements'
 import { purchaseRoutes } from './routes/purchases'
+import { requisitionRoutes } from './routes/requisitions'
 import { staffRoutes } from './routes/staff'
 import { stockRoutes } from './routes/stock'
 import { supplierRoutes } from './routes/suppliers'
@@ -65,6 +66,7 @@ export async function createServer() {
   await fastify.register(stockRoutes)
   await fastify.register(supplierRoutes)
   await fastify.register(purchaseRoutes)
+  await fastify.register(requisitionRoutes)
   await fastify.register(staffRoutes)
   await fastify.register(assignmentRoutes)
 
