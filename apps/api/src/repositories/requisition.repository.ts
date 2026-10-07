@@ -44,6 +44,30 @@ export class RequisitionRepository {
     return rows.length > 0
   }
 
+  async findById(id: string): Promise<RequisitionRecord | undefined> {
+    const rows = await this.db.select().from(requisitions).where(eq(requisitions.id, id)).limit(1)
+    const row = rows[0]
+    if (!row) {
+      return undefined
+    }
+    return {
+      id: row.id,
+      itemId: row.itemId,
+      jobId: row.jobId,
+      quantity: row.quantity,
+      purchaseId: row.purchaseId,
+      createdAt: row.createdAt,
+    }
+  }
+
+  async deleteById(id: string): Promise<boolean> {
+    const deleted = await this.db
+      .delete(requisitions)
+      .where(eq(requisitions.id, id))
+      .returning({ id: requisitions.id })
+    return deleted.length > 0
+  }
+
   async create(requisition: RequisitionRecord): Promise<void> {
     await this.db.insert(requisitions).values({
       id: requisition.id,

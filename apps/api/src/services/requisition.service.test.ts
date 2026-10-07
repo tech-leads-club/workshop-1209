@@ -79,4 +79,23 @@ describe('RequisitionService', () => {
       expect(requisitions.create.notCalled).toBe(true)
     }
   })
+
+  test('deleteById removes the Requisition when purchaseId is null', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves({
+      id: 'requisition-1',
+      itemId: 'item-1',
+      jobId: 'job-1',
+      quantity: 12.5,
+      purchaseId: null,
+      createdAt: '2026-10-07T00:00:00.000Z',
+    })
+    requisitions.deleteById.resolves(true)
+    const service = new RequisitionService(requisitions)
+
+    await service.deleteById('requisition-1')
+
+    expect(requisitions.findById.calledOnceWith('requisition-1')).toBe(true)
+    expect(requisitions.deleteById.calledOnceWith('requisition-1')).toBe(true)
+  })
 })

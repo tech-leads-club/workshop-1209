@@ -43,6 +43,14 @@ export class RequisitionService {
     await this.requisitions.create(requisition)
     return requisition
   }
+
+  async deleteById(id: string): Promise<void> {
+    const found = await this.requisitions.findById(id)
+    if (found?.purchaseId !== null) {
+      return
+    }
+    await this.requisitions.deleteById(id)
+  }
 }
 
 function isPositiveQuantity(value: unknown): value is number {
