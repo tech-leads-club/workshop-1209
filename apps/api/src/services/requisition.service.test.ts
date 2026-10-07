@@ -271,4 +271,46 @@ describe('RequisitionService', () => {
     expect(requisitions.existsSupplier.notCalled).toBe(true)
     expect(requisitions.existsWarehouse.notCalled).toBe(true)
   })
+
+  test('convert throws 400 when Supplier or Warehouse is missing', async () => {
+    const cases = [
+      { input: { warehouseId: 'warehouse-1' }, supplier: true, warehouse: true },
+      { input: { supplierId: 'supplier-1' }, supplier: true, warehouse: true },
+      {
+        input: { supplierId: 'supplier-1', warehouseId: 'warehouse-1' },
+        supplier: false,
+        warehouse: true,
+      },
+      {
+        input: { supplierId: 'supplier-1', warehouseId: 'warehouse-1' },
+        supplier: true,
+        warehouse: false,
+      },
+    ]
+
+    for (const entry of cases) {
+      const requisitions = sinon.createStubInstance(RequisitionRepository)
+      requisitions.findById.resolves({
+        id: 'requisition-1',
+        itemId: 'item-1',
+        jobId: 'job-1',
+        quantity: 12.5,
+        purchaseId: null,
+        createdAt: '2026-10-07T00:00:00.000Z',
+      })
+      requisitions.existsSupplier.resolves(entry.supplier)
+      requisitions.existsWarehouse.resolves(entry.warehouse)
+      const service = new RequisitionService(requisitions)
+
+      try {
+        await service.createPurchase('requisition-1', entry.input, 'Administrator')
+        throw new Error(`expected createPurchase to throw for ${JSON.stringify(entry)}`)
+      } catch (error) {
+        expect((error as Error & { statusCode: number }).statusCode).toBe(400)
+      }
+
+      expect(requisitions.createPurchase.notCalled).toBe(true)
+      expect(requisitions.setPurchaseId.notCalled).toBe(true)
+    }
+  })
 })
