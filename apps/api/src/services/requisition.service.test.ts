@@ -114,4 +114,27 @@ describe('RequisitionService', () => {
 
     expect(requisitions.deleteById.notCalled).toBe(true)
   })
+
+  test('deleteById throws 409 when purchaseId is set', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves({
+      id: 'requisition-1',
+      itemId: 'item-1',
+      jobId: 'job-1',
+      quantity: 12.5,
+      purchaseId: 'purchase-1',
+      createdAt: '2026-10-07T00:00:00.000Z',
+    })
+    const service = new RequisitionService(requisitions)
+
+    try {
+      await service.deleteById('requisition-1')
+      throw new Error('expected deleteById to throw')
+    } catch (error) {
+      expect((error as Error & { statusCode: number }).statusCode).toBe(409)
+      expect((error as Error).message).toBe('Requisition has Purchase')
+    }
+
+    expect(requisitions.deleteById.notCalled).toBe(true)
+  })
 })

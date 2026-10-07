@@ -50,7 +50,7 @@ export class RequisitionService {
       throw httpError('Requisition not found', 404)
     }
     if (found.purchaseId !== null) {
-      return
+      throw httpError('Requisition has Purchase', 409)
     }
     await this.requisitions.deleteById(id)
   }
