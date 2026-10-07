@@ -254,6 +254,21 @@ describe('requisitions HTTP', () => {
     return signedIn.cookies.map((entry) => `${entry.name}=${entry.value}`).join('; ')
   }
 
+  test('POST /api/requisitions/:id/purchases returns 404 when the id does not exist', async () => {
+    const cookie = await operatorCookie()
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/requisitions/00000000-0000-4000-8000-000000000000/purchases',
+      headers: { cookie },
+      payload: { supplierId: 'supplier-1', warehouseId: 'warehouse-1' },
+    })
+    expect(response.statusCode).toBe(404)
+    expect(response.json()).toEqual({
+      error: 'Requisition not found',
+      statusCode: 404,
+    })
+  })
+
   test('POST /api/requisitions/:id/purchases returns 403 for Operator', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
