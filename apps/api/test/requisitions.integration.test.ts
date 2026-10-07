@@ -269,6 +269,46 @@ describe('requisitions HTTP', () => {
     })
   })
 
+  test('POST /api/requisitions/:id/purchases returns 400 when Supplier or Warehouse is missing', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const cases = [
+      { warehouseId: warehouse.id },
+      { supplierId: supplier.id },
+      { supplierId: 'missing', warehouseId: warehouse.id },
+      { supplierId: supplier.id, warehouseId: 'missing' },
+    ]
+
+    for (const payload of cases) {
+      const response = await request({
+        method: 'POST',
+        url: `/api/requisitions/${requisition.id}/purchases`,
+        payload,
+      })
+      expect(response.statusCode).toBe(400)
+      expect((response.json() as { statusCode: number }).statusCode).toBe(400)
+    }
+
+    const list = (await request({ method: 'GET', url: '/api/requisitions' })).json() as {
+      purchaseId: string | null
+    }[]
+    expect(list).toHaveLength(1)
+    expect(list[0]?.purchaseId).toBeNull()
+    expect((await request({ method: 'GET', url: '/api/purchases' })).json()).toEqual([])
+  })
+
   test('POST /api/requisitions/:id/purchases returns 409 when purchaseId is set', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
