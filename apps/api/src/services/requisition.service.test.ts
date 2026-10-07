@@ -98,4 +98,20 @@ describe('RequisitionService', () => {
     expect(requisitions.findById.calledOnceWith('requisition-1')).toBe(true)
     expect(requisitions.deleteById.calledOnceWith('requisition-1')).toBe(true)
   })
+
+  test('deleteById throws 404 when the Requisition does not exist', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves(undefined)
+    const service = new RequisitionService(requisitions)
+
+    try {
+      await service.deleteById('missing')
+      throw new Error('expected deleteById to throw')
+    } catch (error) {
+      expect((error as Error & { statusCode: number }).statusCode).toBe(404)
+      expect((error as Error).message).toBe('Requisition not found')
+    }
+
+    expect(requisitions.deleteById.notCalled).toBe(true)
+  })
 })
