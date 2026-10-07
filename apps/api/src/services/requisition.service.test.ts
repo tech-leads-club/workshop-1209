@@ -218,4 +218,32 @@ describe('RequisitionService', () => {
 
     expect(requisitions.createPurchase.notCalled).toBe(true)
   })
+
+  test('convert throws 403 for Operator when purchaseId is set', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves({
+      id: 'requisition-1',
+      itemId: 'item-1',
+      jobId: 'job-1',
+      quantity: 12.5,
+      purchaseId: 'purchase-1',
+      createdAt: '2026-10-07T00:00:00.000Z',
+    })
+    requisitions.existsSupplier.resolves(true)
+    requisitions.existsWarehouse.resolves(true)
+    const service = new RequisitionService(requisitions)
+
+    try {
+      await service.createPurchase(
+        'requisition-1',
+        { supplierId: 'supplier-1', warehouseId: 'warehouse-1' },
+        'Operator',
+      )
+      throw new Error('expected createPurchase to throw')
+    } catch (error) {
+      expect((error as Error & { statusCode: number }).statusCode).toBe(403)
+    }
+
+    expect(requisitions.createPurchase.notCalled).toBe(true)
+  })
 })
