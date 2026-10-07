@@ -1,3 +1,4 @@
+import type { PurchaseRecord } from '../repositories/purchase.repository'
 import {
   RequisitionRepository,
   type RequisitionRecord,
@@ -7,6 +8,11 @@ export type RequisitionInput = {
   itemId?: string
   jobId?: string
   quantity?: unknown
+}
+
+export type RequisitionPurchaseInput = {
+  supplierId?: string
+  warehouseId?: string
 }
 
 export class RequisitionService {
@@ -53,6 +59,43 @@ export class RequisitionService {
       throw httpError('Requisition has Purchase', 409)
     }
     await this.requisitions.deleteById(id)
+  }
+
+  async createPurchase(
+    id: string,
+    input: RequisitionPurchaseInput,
+    role: string,
+  ): Promise<PurchaseRecord> {
+    const found = await this.requisitions.findById(id)
+    if (!found) {
+      throw httpError('Requisition not found', 404)
+    }
+    if (role !== 'Administrator') {
+      throw httpError('Administrator role is required', 403)
+    }
+
+    const supplierId = input.supplierId?.trim() ?? ''
+    const warehouseId = input.warehouseId?.trim() ?? ''
+    if (
+      !supplierId ||
+      !warehouseId ||
+      !(await this.requisitions.existsSupplier(supplierId)) ||
+      !(await this.requisitions.existsWarehouse(warehouseId))
+    ) {
+      throw httpError('Supplier or Warehouse not found', 400)
+    }
+
+    const purchase: PurchaseRecord = {
+      id: crypto.randomUUID(),
+      supplierId,
+      itemId: found.itemId,
+      warehouseId,
+      quantity: found.quantity,
+      createdAt: new Date().toISOString(),
+    }
+    await this.requisitions.createPurchase(purchase)
+    await this.requisitions.setPurchaseId(id, purchase.id)
+    return purchase
   }
 }
 

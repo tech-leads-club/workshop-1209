@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { AppDatabase } from '../db/client'
-import { items, jobs, requisitions } from '../db/schema'
+import { items, jobs, purchases, requisitions, suppliers, warehouses } from '../db/schema'
+import type { PurchaseRecord } from './purchase.repository'
 
 export type RequisitionRecord = {
   id: string
@@ -66,6 +67,39 @@ export class RequisitionRepository {
       .where(eq(requisitions.id, id))
       .returning({ id: requisitions.id })
     return deleted.length > 0
+  }
+
+  async existsSupplier(id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: suppliers.id })
+      .from(suppliers)
+      .where(eq(suppliers.id, id))
+      .limit(1)
+    return rows.length > 0
+  }
+
+  async existsWarehouse(id: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: warehouses.id })
+      .from(warehouses)
+      .where(eq(warehouses.id, id))
+      .limit(1)
+    return rows.length > 0
+  }
+
+  async createPurchase(purchase: PurchaseRecord): Promise<void> {
+    await this.db.insert(purchases).values({
+      id: purchase.id,
+      supplierId: purchase.supplierId,
+      itemId: purchase.itemId,
+      warehouseId: purchase.warehouseId,
+      quantity: purchase.quantity,
+      createdAt: purchase.createdAt,
+    })
+  }
+
+  async setPurchaseId(id: string, purchaseId: string): Promise<void> {
+    await this.db.update(requisitions).set({ purchaseId }).where(eq(requisitions.id, id))
   }
 
   async create(requisition: RequisitionRecord): Promise<void> {

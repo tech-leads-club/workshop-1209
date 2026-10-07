@@ -137,4 +137,35 @@ describe('RequisitionService', () => {
 
     expect(requisitions.deleteById.notCalled).toBe(true)
   })
+
+  test('convert for Administrator creates the Purchase with quantity 12.5 and sets purchaseId', async () => {
+    const requisitions = sinon.createStubInstance(RequisitionRepository)
+    requisitions.findById.resolves({
+      id: 'requisition-1',
+      itemId: 'item-1',
+      jobId: 'job-1',
+      quantity: 12.5,
+      purchaseId: null,
+      createdAt: '2026-10-07T00:00:00.000Z',
+    })
+    requisitions.existsSupplier.resolves(true)
+    requisitions.existsWarehouse.resolves(true)
+    requisitions.createPurchase.resolves()
+    requisitions.setPurchaseId.resolves()
+    const service = new RequisitionService(requisitions)
+
+    const purchase = await service.createPurchase(
+      'requisition-1',
+      { supplierId: 'supplier-1', warehouseId: 'warehouse-1' },
+      'Administrator',
+    )
+
+    expect(purchase.supplierId).toBe('supplier-1')
+    expect(purchase.itemId).toBe('item-1')
+    expect(purchase.warehouseId).toBe('warehouse-1')
+    expect(purchase.quantity).toBe(12.5)
+    expect(requisitions.createPurchase.calledOnce).toBe(true)
+    expect(requisitions.createPurchase.firstCall.args[0]).toEqual(purchase)
+    expect(requisitions.setPurchaseId.calledOnceWith('requisition-1', purchase.id)).toBe(true)
+  })
 })
