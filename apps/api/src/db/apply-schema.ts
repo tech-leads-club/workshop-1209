@@ -93,6 +93,7 @@ export function applySchema(sqlite: Database): void {
       FOREIGN KEY (job_id) REFERENCES jobs(id),
       FOREIGN KEY (purchase_id) REFERENCES purchases(id)
     );
+    CREATE UNIQUE INDEX IF NOT EXISTS requisitions_purchase_id_unique ON requisitions (purchase_id);
 
     CREATE TABLE IF NOT EXISTS movements (
       id TEXT PRIMARY KEY NOT NULL,

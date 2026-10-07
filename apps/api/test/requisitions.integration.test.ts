@@ -51,8 +51,14 @@ describe('requisitions HTTP', () => {
   beforeEach(() => {
     const sqlite = new Database(dbFile)
     sqlite.exec('DELETE FROM requisitions')
-    sqlite.exec('DELETE FROM items')
+    sqlite.exec('DELETE FROM movements')
+    sqlite.exec('DELETE FROM stock')
+    sqlite.exec('DELETE FROM purchases')
+    sqlite.exec('DELETE FROM assignments')
+    sqlite.exec('DELETE FROM suppliers')
     sqlite.exec('DELETE FROM jobs')
+    sqlite.exec('DELETE FROM warehouses')
+    sqlite.exec('DELETE FROM items')
     sqlite.close()
   })
 
@@ -129,6 +135,58 @@ describe('requisitions HTTP', () => {
     }
 
     expect((await request({ method: 'GET', url: '/api/requisitions' })).json()).toEqual([])
+  })
+
+  test('unique index on purchase_id rejects a duplicate and allows two nulls', async () => {
+    const { item, job } = await seedItemAndJob()
+    const payload = { itemId: item.id, jobId: job.id, quantity: 12.5 }
+    const first = await request({ method: 'POST', url: '/api/requisitions', payload })
+    const second = await request({ method: 'POST', url: '/api/requisitions', payload })
+    expect(first.statusCode).toBe(201)
+    expect(second.statusCode).toBe(201)
+    const firstBody = first.json() as { id: string; purchaseId: null }
+    const secondBody = second.json() as { id: string; purchaseId: null }
+    expect(firstBody.purchaseId).toBeNull()
+    expect(secondBody.purchaseId).toBeNull()
+
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const purchase = (
+      await request({
+        method: 'POST',
+        url: '/api/purchases',
+        payload: {
+          supplierId: supplier.id,
+          itemId: item.id,
+          warehouseId: warehouse.id,
+          quantity: 12.5,
+        },
+      })
+    ).json() as { id: string }
+
+    const sqlite = new Database(dbFile)
+    const indexes = sqlite.query('PRAGMA index_list(requisitions)').all() as {
+      name: string
+      unique: number
+    }[]
+    expect(
+      indexes.some((index) => index.name === 'requisitions_purchase_id_unique' && index.unique === 1),
+    ).toBe(true)
+
+    sqlite.query('UPDATE requisitions SET purchase_id = ? WHERE id = ?').run(purchase.id, firstBody.id)
+    expect(() => {
+      sqlite.query('UPDATE requisitions SET purchase_id = ? WHERE id = ?').run(purchase.id, secondBody.id)
+    }).toThrow(/UNIQUE constraint failed/)
+
+    const kept = sqlite
+      .query('SELECT purchase_id FROM requisitions WHERE id = ?')
+      .get(secondBody.id) as { purchase_id: string | null }
+    expect(kept.purchase_id).toBeNull()
+    sqlite.close()
   })
 
   test('DELETE /api/items/:id returns 409 when a Requisition references the Item', async () => {
