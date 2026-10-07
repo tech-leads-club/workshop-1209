@@ -236,6 +236,25 @@ describe('requisitions HTTP', () => {
     expect(jobs.some((row) => row.id === job.id)).toBe(true)
   })
 
+  test('DELETE /api/requisitions/:id returns 204 when purchaseId is null', async () => {
+    const { item, job } = await seedItemAndJob()
+    const created = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+
+    const response = await request({
+      method: 'DELETE',
+      url: `/api/requisitions/${created.id}`,
+    })
+    expect(response.statusCode).toBe(204)
+    expect(response.body).toBe('')
+    expect((await request({ method: 'GET', url: '/api/requisitions' })).json()).toEqual([])
+  })
+
   test('GET /api/requisitions returns the saved Requisition', async () => {
     const { item, job } = await seedItemAndJob()
     const created = (

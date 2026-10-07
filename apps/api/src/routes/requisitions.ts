@@ -16,4 +16,10 @@ export async function requisitionRoutes(fastify: FastifyInstance) {
     const requisition = await requisitions.create(body)
     return reply.status(201).send(requisition)
   })
+
+  fastify.delete('/api/requisitions/:id', async (request, reply) => {
+    const { id } = request.params as { id: string }
+    await requisitions.deleteById(id)
+    return reply.status(204).send()
+  })
 }
