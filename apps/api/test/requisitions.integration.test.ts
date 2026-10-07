@@ -106,6 +106,25 @@ describe('requisitions HTTP', () => {
     }
   })
 
+  test('POST /api/requisitions with a missing Item or Job returns 400', async () => {
+    const { item, job } = await seedItemAndJob()
+    const cases = [
+      { itemId: 'missing', jobId: job.id, quantity: 12.5 },
+      { itemId: item.id, jobId: 'missing', quantity: 12.5 },
+    ]
+
+    for (const payload of cases) {
+      const response = await request({ method: 'POST', url: '/api/requisitions', payload })
+      expect(response.statusCode).toBe(400)
+      expect(response.json()).toEqual({
+        error: 'Item or Job not found',
+        statusCode: 400,
+      })
+    }
+
+    expect((await request({ method: 'GET', url: '/api/requisitions' })).json()).toEqual([])
+  })
+
   test('GET /api/requisitions returns the saved Requisition', async () => {
     const { item, job } = await seedItemAndJob()
     const created = (
