@@ -67,6 +67,19 @@ describe('requisitions HTTP', () => {
     container.clear()
   })
 
+  test('requisition routes without a session return 401', async () => {
+    const urls = [
+      { method: 'GET', url: '/api/requisitions' },
+      { method: 'POST', url: '/api/requisitions', payload: {} },
+      { method: 'DELETE', url: '/api/requisitions/missing' },
+    ]
+    for (const opts of urls) {
+      const response = await app.inject(opts)
+      expect(response.statusCode).toBe(401)
+      expect(response.json()).toEqual({ error: 'Unauthorized', statusCode: 401 })
+    }
+  })
+
   test('GET /api/requisitions on an empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/requisitions' })
     expect(response.statusCode).toBe(200)
