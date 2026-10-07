@@ -269,6 +269,51 @@ describe('requisitions HTTP', () => {
     })
   })
 
+  test('POST /api/requisitions/:id/purchases returns 403 for Operator when purchaseId is set', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const purchase = (
+      await request({
+        method: 'POST',
+        url: '/api/purchases',
+        payload: {
+          supplierId: supplier.id,
+          itemId: item.id,
+          warehouseId: warehouse.id,
+          quantity: 12.5,
+        },
+      })
+    ).json() as { id: string }
+    const sqlite = new Database(dbFile)
+    sqlite.query('UPDATE requisitions SET purchase_id = ? WHERE id = ?').run(purchase.id, requisition.id)
+    sqlite.close()
+    const before = (await request({ method: 'GET', url: '/api/purchases' })).json() as unknown[]
+    const cookie = await operatorCookie()
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/requisitions/${requisition.id}/purchases`,
+      headers: { cookie },
+      payload: { supplierId: supplier.id, warehouseId: warehouse.id },
+    })
+    expect(response.statusCode).toBe(403)
+    const after = (await request({ method: 'GET', url: '/api/purchases' })).json() as unknown[]
+    expect(after).toEqual(before)
+    expect(after).toHaveLength(1)
+  })
+
   test('POST /api/requisitions/:id/purchases returns 403 for Operator', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
