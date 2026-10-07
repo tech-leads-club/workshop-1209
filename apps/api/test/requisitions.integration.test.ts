@@ -269,6 +269,40 @@ describe('requisitions HTTP', () => {
     })
   })
 
+  test('DELETE /api/purchases/:id returns 409 when a Requisition references the Purchase', async () => {
+    const { item, job } = await seedItemAndJob()
+    const requisition = (
+      await request({
+        method: 'POST',
+        url: '/api/requisitions',
+        payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+      })
+    ).json() as { id: string }
+    const supplier = (
+      await request({ method: 'POST', url: '/api/suppliers', payload: { name: 'Acme' } })
+    ).json() as { id: string }
+    const warehouse = (
+      await request({ method: 'POST', url: '/api/warehouses', payload: { name: 'Depot A' } })
+    ).json() as { id: string }
+    const purchase = (
+      await request({
+        method: 'POST',
+        url: `/api/requisitions/${requisition.id}/purchases`,
+        payload: { supplierId: supplier.id, warehouseId: warehouse.id },
+      })
+    ).json() as { id: string }
+    expect(purchase.id).toMatch(UUID)
+
+    const response = await request({ method: 'DELETE', url: `/api/purchases/${purchase.id}` })
+    expect(response.statusCode).toBe(409)
+    expect((response.json() as { statusCode: number }).statusCode).toBe(409)
+
+    const purchases = (await request({ method: 'GET', url: '/api/purchases' })).json() as {
+      id: string
+    }[]
+    expect(purchases.some((row) => row.id === purchase.id)).toBe(true)
+  })
+
   test('POST /api/requisitions/:id/purchases returns 400 when Supplier or Warehouse is missing', async () => {
     const { item, job } = await seedItemAndJob()
     const requisition = (
