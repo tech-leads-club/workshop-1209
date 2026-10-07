@@ -148,6 +148,23 @@ describe('requisitions HTTP', () => {
     expect(items.some((row) => row.id === item.id)).toBe(true)
   })
 
+  test('DELETE /api/jobs/:id returns 409 when a Requisition references the Job', async () => {
+    const { item, job } = await seedItemAndJob()
+    const created = await request({
+      method: 'POST',
+      url: '/api/requisitions',
+      payload: { itemId: item.id, jobId: job.id, quantity: 12.5 },
+    })
+    expect(created.statusCode).toBe(201)
+
+    const response = await request({ method: 'DELETE', url: `/api/jobs/${job.id}` })
+    expect(response.statusCode).toBe(409)
+    expect((response.json() as { statusCode: number }).statusCode).toBe(409)
+
+    const jobs = (await request({ method: 'GET', url: '/api/jobs' })).json() as { id: string }[]
+    expect(jobs.some((row) => row.id === job.id)).toBe(true)
+  })
+
   test('GET /api/requisitions returns the saved Requisition', async () => {
     const { item, job } = await seedItemAndJob()
     const created = (
