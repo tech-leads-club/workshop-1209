@@ -659,6 +659,16 @@ describe('requisitions HTTP', () => {
 
     const response = await request({ method: 'GET', url: '/api/requisitions' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([created])
+    const list = response.json() as {
+      itemId: string
+      jobId: string
+      quantity: number
+      purchaseId: string | null
+    }[]
+    expect(list).toEqual([created])
+    expect(list[0]?.itemId).toBe(item.id)
+    expect(list[0]?.jobId).toBe(job.id)
+    expect(list[0]?.quantity).toBe(12.5)
+    expect(list[0]?.purchaseId).toBeNull()
   })
 })
