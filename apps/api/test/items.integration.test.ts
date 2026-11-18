@@ -167,6 +167,29 @@ describe('items HTTP', () => {
     }
   })
 
+  test('POST /api/items with a non-string sku, name, or unit returns 400 and does not persist', async () => {
+    const cases = [
+      { ...payload, sku: 123 },
+      { ...payload, name: 123 },
+      { ...payload, unit: true },
+      { ...payload, sku: { value: 'CEM-50' } },
+      { ...payload, name: ['Cimento'] },
+    ]
+
+    for (const input of cases) {
+      const response = await request({
+        method: 'POST',
+        url: '/api/items',
+        payload: input,
+      })
+      expect(response.statusCode).toBe(400)
+      expect(response.json<{ statusCode: number }>().statusCode).toBe(400)
+
+      const list = await request({ method: 'GET', url: '/api/items' })
+      expect(list.json<unknown>()).toEqual([])
+    }
+  })
+
   test('POST /api/items duplicate sku returns 409 and keeps one row', async () => {
     const first = await request({
       method: 'POST',
