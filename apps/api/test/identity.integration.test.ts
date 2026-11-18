@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -43,7 +44,7 @@ describe('identity HTTP', () => {
     container.clear()
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -53,7 +54,7 @@ describe('identity HTTP', () => {
   test('GET /api/items without a session returns 401', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/items' })
     expect(response.statusCode).toBe(401)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Unauthorized',
       statusCode: 401,
     })
@@ -62,7 +63,7 @@ describe('identity HTTP', () => {
   test('GET /health stays public', async () => {
     const response = await app.inject({ method: 'GET', url: '/health' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ status: 'ok' })
+    expect(response.json<unknown>()).toEqual({ status: 'ok' })
   })
 
   test('POST /api/login with a wrong password returns 401', async () => {
@@ -72,7 +73,7 @@ describe('identity HTTP', () => {
       payload: { email: SEED_ADMINISTRATOR.email, password: 'nope' },
     })
     expect(response.statusCode).toBe(401)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Invalid credentials',
       statusCode: 401,
     })
@@ -176,7 +177,7 @@ describe('identity HTTP', () => {
     for (const payload of cases) {
       const response = await request({ method: 'POST', url: '/api/users', payload })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'email, password, and role are required',
         statusCode: 400,
       })
@@ -197,7 +198,7 @@ describe('identity HTTP', () => {
       payload: operator,
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Email already exists',
       statusCode: 409,
     })
@@ -229,7 +230,7 @@ describe('identity HTTP', () => {
       url: '/api/users/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'User not found',
       statusCode: 404,
     })
@@ -241,7 +242,7 @@ describe('identity HTTP', () => {
 
     const me = await request({ method: 'GET', url: '/api/me' })
     expect(me.statusCode).toBe(401)
-    expect(me.json()).toEqual({
+    expect(me.json<unknown>()).toEqual({
       error: 'Unauthorized',
       statusCode: 401,
     })

@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -36,7 +37,7 @@ describe('staff HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -55,7 +56,7 @@ describe('staff HTTP', () => {
   test('GET /api/staff on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/staff' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('POST /api/staff creates Staff and GET contains it', async () => {
@@ -73,7 +74,7 @@ describe('staff HTTP', () => {
 
     const list = await request({ method: 'GET', url: '/api/staff' })
     expect(list.statusCode).toBe(200)
-    expect(list.json()).toEqual([body])
+    expect(list.json<unknown>()).toEqual([body])
   })
 
   test('POST /api/staff trims name', async () => {
@@ -96,13 +97,13 @@ describe('staff HTTP', () => {
         payload,
       })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'name is required',
         statusCode: 400,
       })
 
       const list = await request({ method: 'GET', url: '/api/staff' })
-      expect(list.json()).toEqual([])
+      expect(list.json<unknown>()).toEqual([])
     }
   })
 
@@ -120,7 +121,7 @@ describe('staff HTTP', () => {
       payload: { name: 'Ana' },
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Staff already exists',
       statusCode: 409,
     })
@@ -213,7 +214,7 @@ describe('staff HTTP', () => {
       url: '/api/staff/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Staff not found',
       statusCode: 404,
     })
@@ -241,7 +242,7 @@ describe('staff HTTP', () => {
 
     const response = await request({ method: 'DELETE', url: `/api/staff/${staff.id}` })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Staff has Assignment',
       statusCode: 409,
     })
@@ -255,7 +256,7 @@ describe('staff HTTP', () => {
   })
 
   test('GET POST DELETE /api/staff without a session returns 401', async () => {
-    const cases = [
+    const cases: InjectOptions[] = [
       { method: 'GET', url: '/api/staff' },
       { method: 'POST', url: '/api/staff', payload: { name: 'Ana' } },
       { method: 'DELETE', url: '/api/staff/00000000-0000-4000-8000-000000000000' },
@@ -264,7 +265,7 @@ describe('staff HTTP', () => {
     for (const opts of cases) {
       const response = await app.inject(opts)
       expect(response.statusCode).toBe(401)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'Unauthorized',
         statusCode: 401,
       })

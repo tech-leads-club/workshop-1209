@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -40,7 +41,7 @@ describe('purchases HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -76,7 +77,7 @@ describe('purchases HTTP', () => {
   test('C8 GET /api/purchases on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/purchases' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('C9 POST /api/purchases creates Purchase without writing Stock or Movement', async () => {
@@ -114,9 +115,9 @@ describe('purchases HTTP', () => {
 
     const list = await request({ method: 'GET', url: '/api/purchases' })
     expect(list.statusCode).toBe(200)
-    expect(list.json()).toEqual([body])
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+    expect(list.json<unknown>()).toEqual([body])
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
   })
 
   test('C10 POST /api/purchases with blank ids or missing quantity returns 400 and persists nothing', async () => {
@@ -137,12 +138,12 @@ describe('purchases HTTP', () => {
 
       const response = await request({ method: 'POST', url: '/api/purchases', payload })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'supplierId, itemId, warehouseId, and a positive quantity are required',
         statusCode: 400,
       })
-      expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-      expect((await request({ method: 'GET', url: '/api/purchases' })).json()).toEqual(purchasesBefore)
+      expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+      expect((await request({ method: 'GET', url: '/api/purchases' })).json<unknown>()).toEqual(purchasesBefore)
     }
   })
 
@@ -160,7 +161,7 @@ describe('purchases HTTP', () => {
         },
       })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'quantity must be a positive number',
         statusCode: 400,
       })
@@ -178,13 +179,13 @@ describe('purchases HTTP', () => {
     for (const payload of cases) {
       const response = await request({ method: 'POST', url: '/api/purchases', payload })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'Supplier, Item, or Warehouse not found',
         statusCode: 400,
       })
     }
 
-    expect((await request({ method: 'GET', url: '/api/purchases' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/purchases' })).json<unknown>()).toEqual([])
   })
 
   test('C13 DELETE /api/purchases/:id without Movement returns 204 and leaves Stock unchanged', async () => {
@@ -207,7 +208,7 @@ describe('purchases HTTP', () => {
 
     const list = (await request({ method: 'GET', url: '/api/purchases' })).json() as { id: string }[]
     expect(list.find((row) => row.id === id)).toBeUndefined()
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
   })
 
   test('C14 DELETE /api/purchases/:id with Movement returns 409 and keeps Purchase, Movement and Stock', async () => {
@@ -230,7 +231,7 @@ describe('purchases HTTP', () => {
 
     const response = await request({ method: 'DELETE', url: `/api/purchases/${id}` })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Purchase has Movement',
       statusCode: 409,
     })
@@ -239,8 +240,8 @@ describe('purchases HTTP', () => {
       id: string
     }[]
     expect(purchases.some((row) => row.id === id)).toBe(true)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
   })
 
   test('C15 DELETE /api/purchases/:id missing id returns 404', async () => {
@@ -249,7 +250,7 @@ describe('purchases HTTP', () => {
       url: '/api/purchases/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Purchase not found',
       statusCode: 404,
     })
@@ -322,7 +323,7 @@ describe('purchases HTTP', () => {
 
     const second = await request({ method: 'POST', url: `/api/purchases/${purchase.id}/receipts` })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Purchase already received',
       statusCode: 409,
     })
@@ -331,7 +332,7 @@ describe('purchases HTTP', () => {
       purchaseId: string
     }[]
     expect(movements.filter((row) => row.purchaseId === purchase.id)).toHaveLength(1)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockAfterFirst)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockAfterFirst)
 
     const sqlite = new Database(dbFile)
     const indexes = sqlite.query('PRAGMA index_list(movements)').all() as {
@@ -353,12 +354,12 @@ describe('purchases HTTP', () => {
       url: '/api/purchases/00000000-0000-4000-8000-000000000000/receipts',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Purchase not found',
       statusCode: 404,
     })
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
   })
 
   test('C26 Operator posts Supplier, Purchase, and Receipt from Purchase', async () => {

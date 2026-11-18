@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -38,7 +39,7 @@ describe('suppliers HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -57,7 +58,7 @@ describe('suppliers HTTP', () => {
   test('C1 GET /api/suppliers on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/suppliers' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('C2 POST /api/suppliers trims name, lists the record, leaves purchases empty and stock unchanged', async () => {
@@ -77,14 +78,14 @@ describe('suppliers HTTP', () => {
 
     const list = await request({ method: 'GET', url: '/api/suppliers' })
     expect(list.statusCode).toBe(200)
-    expect(list.json()).toEqual([body])
+    expect(list.json<unknown>()).toEqual([body])
 
     const purchases = await request({ method: 'GET', url: '/api/purchases' })
     expect(purchases.statusCode).toBe(200)
-    expect(purchases.json()).toEqual([])
+    expect(purchases.json<unknown>()).toEqual([])
 
     const stockAfter = await request({ method: 'GET', url: '/api/stock' })
-    expect(stockAfter.json()).toEqual(stockBefore)
+    expect(stockAfter.json<unknown>()).toEqual(stockBefore)
   })
 
   test('C3 POST /api/suppliers duplicate name returns 409 and keeps one Acme', async () => {
@@ -101,7 +102,7 @@ describe('suppliers HTTP', () => {
       payload: { name: 'Acme' },
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Supplier already exists',
       statusCode: 409,
     })
@@ -121,13 +122,13 @@ describe('suppliers HTTP', () => {
         payload: { name },
       })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'name is required',
         statusCode: 400,
       })
 
       const list = await request({ method: 'GET', url: '/api/suppliers' })
-      expect(list.json()).toEqual([])
+      expect(list.json<unknown>()).toEqual([])
     }
   })
 
@@ -176,7 +177,7 @@ describe('suppliers HTTP', () => {
 
     const response = await request({ method: 'DELETE', url: `/api/suppliers/${supplier.id}` })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Supplier has Purchase',
       statusCode: 409,
     })
@@ -197,7 +198,7 @@ describe('suppliers HTTP', () => {
       url: '/api/suppliers/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Supplier not found',
       statusCode: 404,
     })

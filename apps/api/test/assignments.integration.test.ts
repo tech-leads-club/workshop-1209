@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -36,7 +37,7 @@ describe('assignments HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -65,7 +66,7 @@ describe('assignments HTTP', () => {
   test('GET /api/assignments on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/assignments' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('POST /api/assignments creates Assignment and GET contains it', async () => {
@@ -99,7 +100,7 @@ describe('assignments HTTP', () => {
 
     const list = await request({ method: 'GET', url: '/api/assignments' })
     expect(list.statusCode).toBe(200)
-    expect(list.json()).toEqual([body])
+    expect(list.json<unknown>()).toEqual([body])
   })
 
   test('POST /api/assignments trims ids and dates', async () => {
@@ -147,13 +148,13 @@ describe('assignments HTTP', () => {
     for (const payload of cases) {
       const response = await request({ method: 'POST', url: '/api/assignments', payload })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'staffId, jobId, startDate, and endDate are required',
         statusCode: 400,
       })
     }
 
-    expect((await request({ method: 'GET', url: '/api/assignments' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/assignments' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/assignments with 2026-3-1, 01/03/2026, or ISO datetime returns 400', async () => {
@@ -169,14 +170,14 @@ describe('assignments HTTP', () => {
         }
         const response = await request({ method: 'POST', url: '/api/assignments', payload })
         expect(response.statusCode).toBe(400)
-        expect(response.json()).toEqual({
+        expect(response.json<unknown>()).toEqual({
           error: 'startDate and endDate must be YYYY-MM-DD',
           statusCode: 400,
         })
       }
     }
 
-    expect((await request({ method: 'GET', url: '/api/assignments' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/assignments' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/assignments with 2026-02-29 or 2026-13-01 returns 400', async () => {
@@ -192,14 +193,14 @@ describe('assignments HTTP', () => {
         }
         const response = await request({ method: 'POST', url: '/api/assignments', payload })
         expect(response.statusCode).toBe(400)
-        expect(response.json()).toEqual({
+        expect(response.json<unknown>()).toEqual({
           error: 'startDate and endDate must be YYYY-MM-DD',
           statusCode: 400,
         })
       }
     }
 
-    expect((await request({ method: 'GET', url: '/api/assignments' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/assignments' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/assignments with inverted dates returns 400', async () => {
@@ -215,11 +216,11 @@ describe('assignments HTTP', () => {
       },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'endDate must be on or after startDate',
       statusCode: 400,
     })
-    expect((await request({ method: 'GET', url: '/api/assignments' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/assignments' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/assignments with the same startDate and endDate returns 201', async () => {
@@ -257,13 +258,13 @@ describe('assignments HTTP', () => {
     for (const payload of cases) {
       const response = await request({ method: 'POST', url: '/api/assignments', payload })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'Staff or Job not found',
         statusCode: 400,
       })
     }
 
-    expect((await request({ method: 'GET', url: '/api/assignments' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/assignments' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/assignments overlapping inclusive endDate returns 409', async () => {
@@ -300,7 +301,7 @@ describe('assignments HTTP', () => {
       },
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Staff already assigned',
       statusCode: 409,
     })
@@ -436,7 +437,7 @@ describe('assignments HTTP', () => {
     const statuses = [first.statusCode, second.statusCode].sort()
     expect(statuses).toEqual([201, 409])
     const loser = first.statusCode === 409 ? first : second
-    expect(loser.json()).toEqual({
+    expect(loser.json<unknown>()).toEqual({
       error: 'Staff already assigned',
       statusCode: 409,
     })
@@ -456,8 +457,8 @@ describe('assignments HTTP', () => {
       payload: { name: 'Bia' },
     })
     expect(createdStaff.statusCode).toBe(201)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
 
     const created = await request({
       method: 'POST',
@@ -470,8 +471,8 @@ describe('assignments HTTP', () => {
       },
     })
     expect(created.statusCode).toBe(201)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
 
     const assignmentId = (created.json() as { id: string }).id
     const deletedAssignment = await request({
@@ -479,14 +480,14 @@ describe('assignments HTTP', () => {
       url: `/api/assignments/${assignmentId}`,
     })
     expect(deletedAssignment.statusCode).toBe(204)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
 
     const extraStaffId = (createdStaff.json() as { id: string }).id
     const deletedStaff = await request({ method: 'DELETE', url: `/api/staff/${extraStaffId}` })
     expect(deletedStaff.statusCode).toBe(204)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual(stockBefore)
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual(movementsBefore)
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual(stockBefore)
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual(movementsBefore)
   })
 
   test('DELETE /api/assignments/:id returns 204', async () => {
@@ -516,14 +517,14 @@ describe('assignments HTTP', () => {
       url: '/api/assignments/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Assignment not found',
       statusCode: 404,
     })
   })
 
   test('GET POST DELETE /api/assignments without a session returns 401', async () => {
-    const cases = [
+    const cases: InjectOptions[] = [
       { method: 'GET', url: '/api/assignments' },
       {
         method: 'POST',
@@ -541,7 +542,7 @@ describe('assignments HTTP', () => {
     for (const opts of cases) {
       const response = await app.inject(opts)
       expect(response.statusCode).toBe(401)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'Unauthorized',
         statusCode: 401,
       })

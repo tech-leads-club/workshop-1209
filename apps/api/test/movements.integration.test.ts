@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -39,7 +40,7 @@ describe('movements HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -90,7 +91,7 @@ describe('movements HTTP', () => {
   test('GET /api/movements on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/movements' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('POST /api/receipts creates a receipt Movement', async () => {
@@ -194,12 +195,12 @@ describe('movements HTTP', () => {
       payload: { warehouseId: warehouseA.id, itemId: item.id, quantity: 0 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'quantity must be a positive number',
       statusCode: 400,
     })
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual([])
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/receipts with blank ids returns 400 and persists nothing', async () => {
@@ -209,11 +210,11 @@ describe('movements HTTP', () => {
       payload: { warehouseId: '   ', itemId: 'item-1', quantity: 12.5 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'warehouseId, itemId, and a positive quantity are required',
       statusCode: 400,
     })
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/receipts with missing Warehouse or Item returns 400', async () => {
@@ -223,11 +224,11 @@ describe('movements HTTP', () => {
       payload: { warehouseId: 'missing', itemId: 'missing', quantity: 12.5 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Warehouse or Item not found',
       statusCode: 400,
     })
-    expect((await request({ method: 'GET', url: '/api/movements' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/movements' })).json<unknown>()).toEqual([])
   })
 
   test('POST /api/receipts without a session returns 401', async () => {
@@ -237,7 +238,7 @@ describe('movements HTTP', () => {
       payload: { warehouseId: 'w', itemId: 'i', quantity: 1 },
     })
     expect(response.statusCode).toBe(401)
-    expect(response.json()).toEqual({ error: 'Unauthorized', statusCode: 401 })
+    expect(response.json<unknown>()).toEqual({ error: 'Unauthorized', statusCode: 401 })
   })
 
   test('POST /api/transfers moves quantity between Warehouses', async () => {
@@ -289,7 +290,7 @@ describe('movements HTTP', () => {
       },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({ error: 'Insufficient Stock', statusCode: 400 })
+    expect(response.json<unknown>()).toEqual({ error: 'Insufficient Stock', statusCode: 400 })
     const stock = (await request({ method: 'GET', url: '/api/stock' })).json() as {
       warehouseId: string
       quantity: number
@@ -312,7 +313,7 @@ describe('movements HTTP', () => {
       },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'fromWarehouseId and toWarehouseId must differ',
       statusCode: 400,
     })
@@ -325,7 +326,7 @@ describe('movements HTTP', () => {
       payload: { fromWarehouseId: '', toWarehouseId: 'b', itemId: 'i', quantity: 3 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'fromWarehouseId, toWarehouseId, itemId, and a positive quantity are required',
       statusCode: 400,
     })
@@ -344,7 +345,7 @@ describe('movements HTTP', () => {
       },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'quantity must be a positive number',
       statusCode: 400,
     })
@@ -362,7 +363,7 @@ describe('movements HTTP', () => {
       },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Warehouse or Item not found',
       statusCode: 400,
     })
@@ -456,7 +457,7 @@ describe('movements HTTP', () => {
       payload: { warehouseId: warehouseA.id, itemId: item.id, jobId: job.id, quantity: 2 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({ error: 'Insufficient Stock', statusCode: 400 })
+    expect(response.json<unknown>()).toEqual({ error: 'Insufficient Stock', statusCode: 400 })
     const stock = (await request({ method: 'GET', url: '/api/stock' })).json() as {
       quantity: number
     }[]
@@ -470,7 +471,7 @@ describe('movements HTTP', () => {
       payload: { warehouseId: '', itemId: 'i', jobId: 'j', quantity: 2 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'warehouseId, itemId, jobId, and a positive quantity are required',
       statusCode: 400,
     })
@@ -484,7 +485,7 @@ describe('movements HTTP', () => {
       payload: { warehouseId: warehouseA.id, itemId: item.id, jobId: job.id, quantity: 0 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'quantity must be a positive number',
       statusCode: 400,
     })
@@ -498,7 +499,7 @@ describe('movements HTTP', () => {
       payload: { warehouseId: 'missing', itemId: 'missing', jobId: job.id, quantity: 2 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Warehouse or Item not found',
       statusCode: 400,
     })
@@ -512,7 +513,7 @@ describe('movements HTTP', () => {
       payload: { warehouseId: warehouseA.id, itemId: item.id, jobId: 'missing', quantity: 2 },
     })
     expect(response.statusCode).toBe(400)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Job not found',
       statusCode: 400,
     })
@@ -532,7 +533,7 @@ describe('movements HTTP', () => {
     })
     const response = await request({ method: 'DELETE', url: `/api/jobs/${job.id}` })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({ error: 'Job has Movement', statusCode: 409 })
+    expect(response.json<unknown>()).toEqual({ error: 'Job has Movement', statusCode: 409 })
     const jobs = (await request({ method: 'GET', url: '/api/jobs' })).json() as { id: string }[]
     expect(jobs.some((row) => row.id === job.id)).toBe(true)
     expect((await request({ method: 'GET', url: '/api/movements' })).json()).toHaveLength(2)

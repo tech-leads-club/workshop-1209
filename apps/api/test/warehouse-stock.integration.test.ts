@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -40,7 +41,7 @@ describe('warehouses and stock HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -59,13 +60,13 @@ describe('warehouses and stock HTTP', () => {
   test('GET /api/warehouses on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/warehouses' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('GET /api/stock on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/stock' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('POST /api/warehouses creates Warehouse', async () => {
@@ -137,13 +138,13 @@ describe('warehouses and stock HTTP', () => {
         payload: { name },
       })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'name is required',
         statusCode: 400,
       })
 
       const list = await request({ method: 'GET', url: '/api/warehouses' })
-      expect(list.json()).toEqual([])
+      expect(list.json<unknown>()).toEqual([])
     }
   })
 
@@ -161,7 +162,7 @@ describe('warehouses and stock HTTP', () => {
       payload: warehousePayload,
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Warehouse already exists',
       statusCode: 409,
     })
@@ -193,7 +194,7 @@ describe('warehouses and stock HTTP', () => {
       url: '/api/warehouses/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Warehouse not found',
       statusCode: 404,
     })
@@ -311,7 +312,7 @@ describe('warehouses and stock HTTP', () => {
       payload: { warehouseId: warehouse.id, itemId: item.id, quantity: 12.5 },
     })
     expect(response.statusCode).toBe(404)
-    expect((await request({ method: 'GET', url: '/api/stock' })).json()).toEqual([])
+    expect((await request({ method: 'GET', url: '/api/stock' })).json<unknown>()).toEqual([])
   })
 
   test('DELETE /api/stock/:id returns 404 and leaves Stock unchanged', async () => {
@@ -366,7 +367,7 @@ describe('warehouses and stock HTTP', () => {
       url: `/api/warehouses/${warehouse.id}`,
     })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Warehouse has Stock',
       statusCode: 409,
     })
@@ -394,7 +395,7 @@ describe('warehouses and stock HTTP', () => {
       url: `/api/items/${item.id}`,
     })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Item has Stock',
       statusCode: 409,
     })

@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -30,7 +31,7 @@ describe('items HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -51,13 +52,13 @@ describe('items HTTP', () => {
   test('GET /api/items on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/items' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('GET /health returns 200 { status: ok }', async () => {
     const response = await app.inject({ method: 'GET', url: '/health' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual({ status: 'ok' })
+    expect(response.json<unknown>()).toEqual({ status: 'ok' })
   })
 
   test('POST /api/items creates Item without quantity', async () => {
@@ -156,14 +157,14 @@ describe('items HTTP', () => {
         payload: input,
       })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'sku, name, and unit are required',
         statusCode: 400,
       })
 
       const list = await request({ method: 'GET', url: '/api/items' })
       expect(list.statusCode).toBe(200)
-      expect(list.json()).toEqual([])
+      expect(list.json<unknown>()).toEqual([])
     }
   })
 
@@ -181,7 +182,7 @@ describe('items HTTP', () => {
       payload,
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'SKU already exists',
       statusCode: 409,
     })
@@ -244,7 +245,7 @@ describe('items HTTP', () => {
       url: '/api/items/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Item not found',
       statusCode: 404,
     })
