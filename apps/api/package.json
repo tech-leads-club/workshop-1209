@@ -9,7 +9,9 @@
     "test": "bun test",
     "db:push": "bun run src/db/push.ts",
     "db:generate": "bunx drizzle-kit generate",
-    "db:studio": "bunx drizzle-kit studio"
+    "db:studio": "bunx drizzle-kit studio",
+    "typecheck": "tsc --noEmit -p .",
+    "lint": "oxlint"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.2",
@@ -23,6 +25,7 @@
     "@types/bun": "^1.4.1",
     "@types/sinon": "^22.0.0",
     "drizzle-kit": "^0.31.10",
+    "oxlint": "^1.79.0",
     "sinon": "^22.1.0",
     "typescript": "^7.0.2"
   }

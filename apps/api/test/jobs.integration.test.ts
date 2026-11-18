@@ -1,3 +1,4 @@
+import type { InjectOptions } from 'fastify'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -43,7 +44,7 @@ describe('jobs HTTP', () => {
     cookie = (await login(app)).cookie
   })
 
-  function request(opts: { method: string; url: string; payload?: unknown }) {
+  function request(opts: Pick<InjectOptions, 'method' | 'url' | 'payload'>) {
     return app.inject({
       ...opts,
       headers: { cookie },
@@ -62,7 +63,7 @@ describe('jobs HTTP', () => {
   test('S1 GET /api/jobs on empty table returns 200 []', async () => {
     const response = await request({ method: 'GET', url: '/api/jobs' })
     expect(response.statusCode).toBe(200)
-    expect(response.json()).toEqual([])
+    expect(response.json<unknown>()).toEqual([])
   })
 
   test('S2 POST /api/jobs creates Job', async () => {
@@ -116,13 +117,13 @@ describe('jobs HTTP', () => {
         payload: { name },
       })
       expect(response.statusCode).toBe(400)
-      expect(response.json()).toEqual({
+      expect(response.json<unknown>()).toEqual({
         error: 'name is required',
         statusCode: 400,
       })
 
       const list = await request({ method: 'GET', url: '/api/jobs' })
-      expect(list.json()).toEqual([])
+      expect(list.json<unknown>()).toEqual([])
     }
   })
 
@@ -140,7 +141,7 @@ describe('jobs HTTP', () => {
       payload: jobPayload,
     })
     expect(second.statusCode).toBe(409)
-    expect(second.json()).toEqual({
+    expect(second.json<unknown>()).toEqual({
       error: 'Job already exists',
       statusCode: 409,
     })
@@ -172,7 +173,7 @@ describe('jobs HTTP', () => {
       url: '/api/jobs/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(404)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Job not found',
       statusCode: 404,
     })
@@ -206,7 +207,7 @@ describe('jobs HTTP', () => {
   test('S10 GET /api/jobs without a session returns 401', async () => {
     const response = await app.inject({ method: 'GET', url: '/api/jobs' })
     expect(response.statusCode).toBe(401)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Unauthorized',
       statusCode: 401,
     })
@@ -234,7 +235,7 @@ describe('jobs HTTP', () => {
 
     const response = await request({ method: 'DELETE', url: `/api/jobs/${job.id}` })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Job has Assignment',
       statusCode: 409,
     })
@@ -281,7 +282,7 @@ describe('jobs HTTP', () => {
 
     const response = await request({ method: 'DELETE', url: `/api/jobs/${job.id}` })
     expect(response.statusCode).toBe(409)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Job has Movement',
       statusCode: 409,
     })
@@ -293,7 +294,7 @@ describe('jobs HTTP', () => {
       url: '/api/jobs/00000000-0000-4000-8000-000000000000',
     })
     expect(response.statusCode).toBe(401)
-    expect(response.json()).toEqual({
+    expect(response.json<unknown>()).toEqual({
       error: 'Unauthorized',
       statusCode: 401,
     })

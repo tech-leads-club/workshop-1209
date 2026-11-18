@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "bun --filter '*' dev",
     "dev:api": "bun --filter @fake-erp/api dev",
-    "dev:web": "bun --filter @fake-erp/web dev"
+    "dev:web": "bun --filter @fake-erp/web dev",
+    "test": "bun --filter '*' test",
+    "typecheck": "bun --filter '*' typecheck",
+    "lint": "bun --filter '*' lint"
   }
 }

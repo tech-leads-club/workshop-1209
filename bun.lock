@@ -20,6 +20,7 @@
         "@types/bun": "^1.4.1",
         "@types/sinon": "^22.0.0",
         "drizzle-kit": "^0.31.10",
+        "oxlint": "^1.79.0",
         "sinon": "^22.1.0",
         "typescript": "^7.0.2",
       },
