@@ -28,6 +28,8 @@ export async function createServer() {
   await seedAdministratorIfEmpty(container.get<AppDatabase>(tokens.db))
 
   const fastify = Fastify({
+    // Fastify's default Ajv coerces 123 into "123"; a wrong type must be a 400.
+    ajv: { customOptions: { coerceTypes: false } },
     logger: {
       level: config.LOG_LEVEL,
       transport:
